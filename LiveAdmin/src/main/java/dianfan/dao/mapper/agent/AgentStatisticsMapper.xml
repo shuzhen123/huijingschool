@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentStatisticsMapper">
+	<sql id="condition_param">
+		<if test="telno != null and telno != ''">
+			<!-- 用户账号 -->
+			<bind name="telno_" value="telno + '%'" />
+			and user.telno like #{telno_}
+		</if>
+		<if test="nickname != null and nickname != ''">
+			<!-- 用户昵称 -->
+			<bind name="nickname_" value="nickname + '%'" />
+			and user.nickname like #{nickname_}
+		</if>
+		<if test="orderno != null and orderno != ''">
+			<!-- 订单号-->
+			<bind name="orderno_" value="orderno + '%'" />
+			and orders.orderno like #{orderno_}
+		</if>
+		<if test="paystatus != null and paystatus != ''">
+			<!-- 支付状态 -->
+			and orders.paystatus=#{paystatus}
+		</if>
+		<if test="entkbn != null and entkbn != ''">
+			<!-- 订单状态-->
+			and orders.entkbn=#{entkbn}
+		</if>
+		<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+			<!-- 使用时间搜索 -->
+			<bind name="_starttime" value="starttime + ' 00:00:00'" />
+			<bind name="endtime_" value="endtime + ' 23:59:59'" />
+			and orders.createtime between #{_starttime} and #{endtime_}
+		</if>
+		and orders.userid=user.userid and ((orders.paystatus=0 and orders.endpaytime > now()) or orders.paystatus=1)
+	</sql>
+	<!-- 代理商下用户课程消费订单总数量 -->
+	<select id="findCourseOrderCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_courseorders orders, t_customer cust, t_userinfo user
+		where 
+			orders.userid=cust.userid and cust.dtagentuserid=#{agentid}
+			<include refid="condition_param" />
+			and cust.dtsmuserid in 
+			(
+			    select salesmanuserid from t_agent_user
+	            <where> and agentuserid=#{agentid}
+	                <if test="searchdeptid != null and searchdeptid != ''">
+	                    and deptid=#{searchdeptid}
+	               	</if>
+	                <if test="searchsalerid != null and searchsalerid != ''">
+	                    and salesmanuserid=#{searchsalerid}
+	                </if>
+	                <if test="userid != null and userid != ''">
+	                    and deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+	                </if>
+	            </where>
+             )
+	</select>
+	
+	<!-- 代理商下用户课程消费订单数据 -->
+	<select id="findCourseOrder" parameterType="map" resultType="courseOrderCollect">
+		select
+			data.*, rel.coursename
+		from
+			(select
+				orders.*, saler.realname, cash.cpname, cash.price
+			from
+				(
+					select 
+						orders.orderno, orders.userid, orders.cashcouponid, orders.money, orders.paystatus, orders.paytype, 
+						orders.paytime, orders.validitytime, orders.createtime, orders.entkbn,
+						user.telno, user.nickname, cust.dtsmuserid salerid
+					from 
+						t_courseorders orders, t_customer cust, t_userinfo user
+					where 
+						orders.userid=cust.userid and cust.dtagentuserid=#{agentid}
+						<include refid="condition_param" />
+						and cust.dtsmuserid in 
+						(
+						    select salesmanuserid from t_agent_user
+				            <where> and agentuserid=#{agentid}
+				                <if test="searchdeptid != null and searchdeptid != ''">
+				                    and deptid=#{searchdeptid}
+				               	</if>
+				                <if test="searchsalerid != null and searchsalerid != ''">
+				                    and salesmanuserid=#{searchsalerid}
+				                </if>
+				                <if test="userid != null and userid != ''">
+				                    and deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+				                </if>
+				            </where>
+			             )
+						order by orders.createtime desc limit #{start}, #{length}
+				)orders left join t_userinfo saler on orders.salerid=saler.userid
+				left join (
+					select 
+						cc.id, ca.cpname, ca.price 
+					from 
+						t_ccrelation cc, t_cashcoupon ca 
+					where 
+						cc.cashid=ca.id and cc.userid in (
+							select userid from t_customer where dtagentuserid=#{agentid}
+						)
+				)cash on orders.cashcouponid=cash.id
+			)data, (
+						select 
+							rel.orderid, group_concat(cour.coursename) coursename
+						from 
+							t_course_orders_relation rel, t_course cour
+						where 
+							rel.courseid=cour.courseid group by rel.orderid
+					)rel
+		where data.orderno=rel.orderid order by data.createtime desc
+	</select>
+	
+	<!-- 根据条件获取礼物消费订单总条数 -->
+	<select id="findGoodsOrderCount" parameterType="map" resultType="int">
+		select count(*)
+		from 
+			t_giftorders vipo left join t_customer ct on vipo.userid = ct.userid 
+		where 
+			<choose>
+				<when test="agentid != null">
+					ct.dtagentuserid = #{agentid}
+					and ct.dtsmuserid in 
+					(
+					    select salesmanuserid from t_agent_user
+			            <where> and agentuserid=#{agentid}
+			                <if test="searchdeptid != null and searchdeptid != ''">
+			                    and deptid=#{searchdeptid}
+			               	</if>
+			                <if test="searchsalerid != null and searchsalerid != ''">
+			                    and salesmanuserid=#{searchsalerid}
+			                </if>
+			                <if test="userid != null and userid != ''">
+			                    and deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+			                </if>
+			            </where>
+		             )
+				</when>
+				<when test="salerid != null">
+					ct.dtsmuserid = #{salerid}
+				</when>
+			</choose>
+			and (paystatus = 1 or paystatus = 2)
+	</select>
+	
+	<!-- 根据条件获取礼物消费订单数据 -->
+	<select id="findGoodsOrder" parameterType="map" resultType="statementBean">
+		select 
+			orders.orderno, orders.money, orders.counts, orders.paystatus, orders.paytime,
+			users.userid, users.telno, users.nickname, 
+			goods.goodsid, goods.goodsname, goods.price,
+			salers.userid salerid, salers.realname, bran.bsalermoney profit, bran.bagentmoney aprofit
+		from 
+			(
+			select
+				vipo.orderno, vipo.goodsid, vipo.userid, vipo.source, vipo.money, vipo.counts, vipo.paystatus, vipo.paytime, ct.dtsmuserid salerid
+			from t_giftorders vipo left join t_customer ct on vipo.userid = ct.userid 
+			where 
+				<choose>
+					<when test="agentid != null">
+						ct.dtagentuserid = #{agentid}
+						and ct.dtsmuserid in 
+						(
+						    select salesmanuserid from t_agent_user
+				            <where> and agentuserid=#{agentid}
+				                <if test="searchdeptid != null and searchdeptid != ''">
+				                    and deptid=#{searchdeptid}
+				               	</if>
+				                <if test="searchsalerid != null and searchsalerid != ''">
+				                    and salesmanuserid=#{searchsalerid}
+				                </if>
+				                <if test="userid != null and userid != ''">
+				                    and deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+				                </if>
+				            </where>
+			             )
+					</when>
+					<when test="salerid != null">
+						ct.dtsmuserid = #{salerid}
+					</when>
+				</choose>
+				and (paystatus = 1 or paystatus = 2) order by vipo.paytime desc 
+				<if test="length > 0">
+					limit #{start}, #{length}
+				</if>
+			) orders 
+			left join branchprofit bran on orders.orderno = bran.orderno 
+			left join t_goods goods on orders.goodsid = goods.goodsid 
+			left join t_userinfo users on orders.userid = users.userid 
+			left join t_userinfo salers on orders.salerid = salers.userid 
+			order by orders.paytime desc 
+	</select>
+	
+	<!-- 代理商提成汇总 -->
+	<select id="fingWageStatistics" parameterType="map" resultType="branchProfit">
+		select kind, bagentmoney, bsalermoney 
+		from branchprofit
+		where 
+			agentuserid = #{agentid}
+			<choose>
+				<when test="deptid != null and deptid != ''">
+					<!-- 部门数据 -->
+					and saleruserid in (select salesmanuserid from t_agent_user where deptid = #{deptid} and agentuserid=#{agentid})
+				</when>
+				<when test="salerid != null and salerid != ''">
+					<!-- 部门数据 -->
+					and saleruserid = #{salerid}
+				</when>
+				<when test="userid != null and userid != ''">
+				    and saleruserid in (
+						select 
+							au.salesmanuserid 
+						from 
+							t_agent_user au, t_userinfo saler 
+						<where>
+							and au.salesmanuserid=saler.userid and saler.entkbn!=9
+							<if test="userid != null and userid != ''">
+								and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+							</if>
+							and au.agentuserid=#{agentid}
+						</where>
+					) 
+				</when>
+			</choose>
+			<bind name="_starttime" value="starttime + ' 00:00:00'" />
+			<bind name="endtime_" value="endtime + ' 23:59:59'" />
+			and bprofitdate between #{_starttime} and #{endtime_}
+	</select>
+	
+	<!-- 业务员提成汇总 -->
+	<select id="fingWageSalerStatistics" parameterType="map" resultType="branchProfit">
+		select kind, bagentmoney, bsalermoney 
+		from branchprofit
+		where 
+			saleruserid = #{saleruserid}
+			<bind name="_starttime" value="starttime + ' 00:00:00'" />
+			<bind name="endtime_" value="endtime + ' 23:59:59'" />
+			and bprofitdate between #{_starttime} and #{endtime_}
+	</select>
+	
+	<!-- 根据条件获取业务员合规处理总条数 -->
+	<select id="findSalerViolatorCount" parameterType="map" resultType="int">
+		<bind name="_starttime" value="starttime + ' 00:00:00'" />
+		<bind name="endtime_" value="endtime + ' 23:59:59'" />
+		select count(*) 
+		from 
+			t_userinfo info left join 
+			(
+				select 
+					saleid, count(saleid) 
+				from 
+					t_reperecs 
+				where 
+					saleid in(
+						select 
+							au.salesmanuserid 
+						from 
+							t_agent_user au, t_userinfo saler 
+						<where>
+							and au.salesmanuserid=saler.userid and saler.entkbn!=9
+							<if test="deptid != null and deptid != 'null'">
+								<choose>
+									<when test="deptid == ''">
+										and au.deptid is null
+									</when>
+									<otherwise>
+										and au.deptid=#{deptid}
+									</otherwise>
+								</choose>
+							</if>
+							<if test="salerid != null and salerid != ''">
+								and au.salesmanuserid=#{salerid}
+							</if>
+							<if test="userid != null and userid != ''">
+								and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+							</if>
+							and au.agentuserid=#{agentid}
+						</where>
+					) 
+					and createtime between #{_starttime} and #{endtime_} and entkbn=0 group by saleid
+			)rep on info.userid=rep.saleid
+		where 
+			info.userid in(
+				select 
+					au.salesmanuserid 
+				from 
+					t_agent_user au, t_userinfo saler 
+				<where>
+					and au.salesmanuserid=saler.userid and saler.entkbn!=9
+					<if test="deptid != null and deptid != 'null'">
+						<choose>
+							<when test="deptid == ''">
+								and au.deptid is null
+							</when>
+							<otherwise>
+								and au.deptid=#{deptid}
+							</otherwise>
+						</choose>
+					</if>
+					<if test="salerid != null and salerid != ''">
+						and au.salesmanuserid=#{salerid}
+					</if>
+					<if test="userid != null and userid != ''">
+						and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+					</if>
+					and au.agentuserid=#{agentid}
+				</where>
+			)
+	</select>
+	
+	<!-- 根据条件获取业务员合规处理数据 -->
+	<select id="findSalerViolator" parameterType="map" resultType="compliance">
+		<bind name="_starttime" value="starttime + ' 00:00:00'" />
+		<bind name="endtime_" value="endtime + ' 23:59:59'" />
+		select 
+			info.userid, info.username, info.realname, IFNULL(rep.count, 0) count, IFNULL(rep.money,0) money
+		from 
+			t_userinfo info left join 
+			(
+				select 
+					saleid, count(saleid) count, sum(money) money 
+				from 
+					t_reperecs 
+				where 
+					saleid in(
+						select 
+							au.salesmanuserid 
+						from 
+							t_agent_user au, t_userinfo saler 
+						<where>
+							and au.salesmanuserid=saler.userid and saler.entkbn!=9
+							<if test="deptid != null and deptid != 'null'">
+								<choose>
+									<when test="deptid == ''">
+										and au.deptid is null
+									</when>
+									<otherwise>
+										and au.deptid=#{deptid}
+									</otherwise>
+								</choose>
+							</if>
+							<if test="salerid != null and salerid != ''">
+								and au.salesmanuserid=#{salerid}
+							</if>
+							<if test="userid != null and userid != ''">
+								and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+							</if>
+							and au.agentuserid=#{agentid}
+						</where>
+					) 
+					and createtime between #{_starttime} and #{endtime_} and entkbn=0 group by saleid
+			)rep on info.userid=rep.saleid
+		where 
+			info.userid in(
+				select 
+					au.salesmanuserid 
+				from 
+					t_agent_user au, t_userinfo saler 
+				<where>
+					and au.salesmanuserid=saler.userid and saler.entkbn!=9
+					<if test="deptid != null and deptid != 'null'">
+						<choose>
+							<when test="deptid == ''">
+								and au.deptid is null
+							</when>
+							<otherwise>
+								and au.deptid=#{deptid}
+							</otherwise>
+						</choose>
+					</if>
+					<if test="salerid != null and salerid != ''">
+						and au.salesmanuserid=#{salerid}
+					</if>
+					<if test="userid != null and userid != ''">
+						and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+					</if>
+					and au.agentuserid=#{agentid}
+				</where>
+			)
+			order by rep.money desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 业务员合规处理详情数据 -->
+	<select id="salerViolatorDetail" parameterType="map" resultType="reperecs">
+		<bind name="_starttime" value="starttime + ' 00:00:00'" />
+		<bind name="endtime_" value="endtime + ' 23:59:59'" />
+		select
+			rep.id, rep.type rtype, rep.detail, rep.money, rep.createtime, rep.handlemethodid, hm.counts, hm.type
+		from 
+			t_reperecs rep left join t_handlemethod hm on rep.handlemethodid=hm.id
+		where
+			rep.saleid=#{salerid} and rep.createtime between #{_starttime} and #{endtime_}
+			and rep.entkbn=0 order by rep.createtime desc
+	</select>
+
+	<!-- 根据条件获取业务员通话时长总条数 -->
+	<select id="findTalktimestatisticsCount" parameterType="map" resultType="int">
+		<bind name="_starttime" value="starttime + ' 00:00:00'" />
+		<bind name="endtime_" value="endtime + ' 23:59:59'" />
+		select count(*) 
+		from 
+			t_userinfo info left join 
+			(
+				select 
+					salerid
+				from 
+					t_salecustomer_tellog 
+				where 
+					salerid in(
+						select 
+							au.salesmanuserid 
+						from 
+							t_agent_user au, t_userinfo saler 
+						<where>
+							and au.salesmanuserid=saler.userid and saler.entkbn!=9
+							<if test="deptid != null and deptid != ''">
+                                and au.deptid=#{deptid}
+							</if>
+							<if test="salerid != null and salerid != ''">
+								and au.salesmanuserid=#{salerid}
+							</if>
+							<if test="userid != null and userid != ''">
+								and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+							</if>
+							and au.agentuserid=#{agentid}
+						</where>
+					) 
+					and createtime between #{_starttime} and #{endtime_} and entkbn=0 group by salerid
+			)telllog on info.userid=telllog.salerid
+		where 
+			info.userid in(
+				select 
+					au.salesmanuserid 
+				from 
+					t_agent_user au, t_userinfo saler 
+				<where>
+					and au.salesmanuserid=saler.userid and saler.entkbn!=9
+					<if test="deptid != null and deptid != ''">
+					    and au.deptid=#{deptid}
+					</if>
+					<if test="salerid != null and salerid != ''">
+						and au.salesmanuserid=#{salerid}
+					</if>
+					<if test="userid != null and userid != ''">
+						and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+					</if>
+					and au.agentuserid=#{agentid}
+				</where>
+			)
+	</select>
+	
+	<!-- 根据条件获取业务员通话时长数据 -->
+	<select id="findTalktimestatistics" parameterType="map" resultType="talktime">
+		<bind name="_starttime" value="starttime + ' 00:00:00'" />
+		<bind name="endtime_" value="endtime + ' 23:59:59'" />
+		select 
+			info.userid, info.username, info.realname, IFNULL(telllog.count, 0) count, IFNULL(telllog.calltimes,0) calltimes
+		from 
+			t_userinfo info left join 
+			(
+				select 
+					salerid, count(salerid) count, sum(calltimes) calltimes 
+				from 
+					t_salecustomer_tellog 
+				where 
+					salerid in(
+						select 
+							au.salesmanuserid 
+						from 
+							t_agent_user au, t_userinfo saler 
+						<where>
+							and au.salesmanuserid=saler.userid and saler.entkbn!=9
+							<if test="deptid != null and deptid != ''">
+								and au.deptid=#{deptid}
+							</if>
+							<if test="salerid != null and salerid != ''">
+								and au.salesmanuserid=#{salerid}
+							</if>
+							<if test="userid != null and userid != ''">
+								and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+							</if>
+							and au.agentuserid=#{agentid}
+						</where>
+					) 
+					and createtime between #{_starttime} and #{endtime_} and entkbn=0 group by salerid
+			)telllog on info.userid=telllog.salerid
+		where 
+			info.userid in(
+				select 
+					au.salesmanuserid 
+				from 
+					t_agent_user au, t_userinfo saler 
+				<where>
+					and au.salesmanuserid=saler.userid and saler.entkbn!=9
+					<if test="deptid != null and deptid != ''">
+						and au.deptid=#{deptid}
+					</if>
+					<if test="salerid != null and salerid != ''">
+						and au.salesmanuserid=#{salerid}
+					</if>
+					<if test="userid != null and userid != ''">
+						and au.deptid in (select deptid from t_agentuser_depts WHERE userid=#{userid})
+					</if>
+					and au.agentuserid=#{agentid}
+				</where>
+			)
+			order by telllog.calltimes desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

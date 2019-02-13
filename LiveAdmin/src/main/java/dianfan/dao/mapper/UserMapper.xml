@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.UserMapper">
+	<!-- 获取业务员对应等级的任务数 -->
+	<!-- <select id="findSalerLevelTaskNum" parameterType="list" resultType="bashMap">
+		select 
+			ls.userid id, level.limitpeople name
+		from 
+			t_level_saler ls left join t_level level on ls.levelid = level.id
+		where 
+			userid in
+			<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+	</select> -->
+	
+	<!-- 给所有业务员添加任务数 -->
+	<!-- <insert id="addSalerDistribute" parameterType="list">
+		insert into t_salesmansta (id, userid, createtime, standpeople, actualpeople) values
+		<foreach item="item" index="index" collection="list" separator=",">
+			(replace(uuid(),'-',''), #{item.id}, now(), #{item.num}, 0)
+		</foreach>
+	</insert> -->
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

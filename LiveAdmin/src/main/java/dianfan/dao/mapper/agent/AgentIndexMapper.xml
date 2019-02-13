@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentIndexMapper">
+
+	<!-- 获取时间段内的注册人数 -->
+	<select id="findRegisterUserByTime" parameterType="map" resultType="chartsBean">
+		select count(*) num, time from 
+		(
+			select 
+				user.userid, date_format(user.registertime,'%Y-%m-%d') time 
+			from 
+				t_userinfo user, t_customer cust
+			where 
+				user.userid=cust.userid and cust.dtagentuserid=#{agentid} and user.role = 1 and user.entkbn = 0 
+				and user.registertime between #{starttime} and #{endtime} order by user.registertime asc 
+		) data group by time
+	</select>
+	
+	<!-- 获取时间段内的课程购买金额 -->
+	<select id="findBuyCourseByTime" parameterType="map" resultType="chartsBean">
+		select 
+			sum(money) money, time 
+		from
+			(
+				select 
+					orders. money, date_format(orders.paytime,'%Y-%m-%d') time 
+				from 
+					t_courseorders orders, t_customer cust
+				where 
+					orders.userid=cust.userid and cust.dtagentuserid = #{agentid} and
+					(orders.paystatus=1 or orders.paystatus = 2) 
+					and orders.paytime between #{starttime} and #{endtime} order by orders.paytime
+			) money group by time
+	</select>
+	
+	<!-- 获取时间段内的礼物购买金额 -->
+	<select id="findBuyGoodsByTime" parameterType="map" resultType="chartsBean">
+		select 
+			sum(money) money, time 
+		from
+			(
+				select 
+					orders. money, date_format(orders.paytime,'%Y-%m-%d') time 
+				from 
+					t_giftorders orders, t_customer cust
+				where 
+					orders.userid=cust.userid and cust.dtagentuserid = #{agentid} and
+					(orders.paystatus=1 or orders.paystatus = 2) 
+					and orders.paytime between #{starttime} and #{endtime} order by orders.paytime
+			) money group by time
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

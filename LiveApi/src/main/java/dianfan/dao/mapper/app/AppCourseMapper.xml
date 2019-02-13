@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppCourseMapper">
+
+	<!-- 首页课程列表 -->
+	<select id="findCoursesByType" parameterType="int" resultType="appRecommendCourse">
+		select
+			courseid,  coursename, coursepic, coursemoney, browsingcount study_count
+	    from 
+	    	t_course
+	    where 
+	      auth = 2 and flag=1 and courselimit=#{type} and recommendflag = 1 and entkbn = 0 and 
+	      (coursekind = 3 or coursekind = 4) order by browsingcount desc
+	</select>
+	
+	<!-- 获取与当前课程相同讲师的推荐课程列表  -->
+	<select id="findRecommendCourse" parameterType="String" resultType="appRecommendCourse">
+		select 
+		  courseid,  coursename, coursepic, coursemoney, browsingcount study_count
+		from 
+		  t_course
+		where 
+		  auth = 2 and flag=1 and userid=(select userid from t_course where courseid=#{courseid})
+		  and recommendflag = 1 and entkbn = 0 and 
+		  (coursekind = 3 or coursekind = 4) group by recommendflag desc order by browsingcount desc limit 0, 5
+	</select>
+	
+	<!-- 根据条件获取课程总条数 -->
+	<select id="getCourseCountByParam" parameterType="courseCondition" resultType="int">
+		select
+			count(*)
+		from
+			t_course
+		<where>
+			<choose>
+				<when test="teacherid != null and teacherid != ''">
+					<!-- 按名师 -->
+					and userid=#{teacherid}
+				</when>
+				<when test="type != null and type != ''">
+					<!-- 按类型 -->
+					and coursetypecode=#{type}
+				</when>
+				<when test="price != null and price != ''">
+					<!-- 按价格区间 -->
+					and coursemoney between (
+						select IFNULL(lprice,0) from t_price_range where id=#{price}
+					) and (
+						select IFNULL(hprice,9999999999) from t_price_range where id=#{price}
+					)
+				</when>
+			</choose>
+			and coursekind=#{coursetype} and entkbn=0 and auth=2 and flag = 1
+		</where> 
+	</select>
+	
+	<!-- 根据类型获取课程列表 -->
+	<select id="getCourseList" parameterType="courseCondition" resultType="courseList">
+		select 
+			course.courseid, course.coursename, course.courselimit, course.coursemoney, course.coursepic, 
+			course.thumbsupcount, course.browsingcount, course.createtime
+		from 
+			t_course course 
+		where
+			course.coursekind = #{coursetype}
+			<if test="teacherid != null and teacherid != ''">
+				<!-- 按名师 -->
+				and course.userid=#{teacherid}
+			</if>
+			<if test="type != null and type != ''">
+				<!-- 按类型 -->
+				and course.coursetypecode=#{type}
+			</if>
+			<if test="price != null and price != ''">
+				<!-- 按价格区间 -->
+				and course.coursemoney between (
+					select IFNULL(lprice,0) from t_price_range where id=#{price}
+				) and (
+					select IFNULL(hprice,9999999999) from t_price_range where id=#{price}
+				)
+			</if>
+			and course.entkbn=0 and course.auth=2 and course.flag = 1
+			order by
+			<if test="peopleunm != null and peopleunm != ''">
+			    <!-- 仅按学习人数排序 -->
+			    browsingcount ${peopleunm},
+		  	</if>
+		  	<if test="evaluate != null and evaluate != ''">
+			    <!-- 仅按点赞排序 -->
+			    thumbsupcount ${evaluate},
+			</if>
+			createtime desc limit #{page}, #{offset}
+	</select>
+	
+	<!-- 课程id对应的学习量 -->
+	<select id="getStudyCount" parameterType="list" resultType="courseAndStudyCount">
+		select 
+			couseid courseid, count(couseid) studyCount
+		from 
+			t_studyprogress 
+		where 
+			couseid in
+			<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			 #{item}
+			</foreach> 
+			group by couseid;
+	</select>
+	
+	<!-- 获取用户与课程间点赞关系 -->
+	<select id="getPraiseStatus" parameterType="map" resultType="map">
+		select 
+			couseid
+		from 
+			t_course_thumbsup
+		where
+			couseid in 
+			<foreach item="courseids" index="index" collection="courseids" open="(" separator="," close=")">  
+			 #{courseids}
+			</foreach>
+			and userid=#{userid}
+			and entkbn=0
+	</select>
+	
+	<!-- 获取课程详情 -->
+	<select id="getCourseDetailByCourseid" parameterType="string" resultType="courseDetail">
+		select 
+			course.courseid, course.coursedes, course.thumbsupcount, course.courselimit, course.coursemoney,
+			user.userid, user.realname username, user.introduction, user.iconurl
+		from 
+			t_course course left join t_userinfo user on course.userid=user.userid 
+		where
+			course.courseid=#{courseid} limit 0, 1
+	</select>
+	
+	<!-- 获取课程评论总条数 -->
+	<select id="getCourseCommentCountByCourseid" parameterType="string" resultType="int">
+		select 
+			count(*)
+		from
+			t_course_comment comment join t_userinfo user on comment.userid=user.userid
+		where 
+			comment.courseid=#{courseid} and comment.entkbn=0 and user.entkbn=0
+	</select>
+	
+	<!-- 获取课程评价列表 -->
+	<select id="getCourseCommentByCourseid" parameterType="map" resultType="courseCommentInfo">
+		select 
+			comment.userid, comment.commentcontent, comment.coursescore, comment.createtime, 
+			user.nickname, user.iconurl
+		from
+			t_course_comment comment join t_userinfo user on comment.userid=user.userid
+		where 
+			comment.courseid=#{courseid} and comment.entkbn=0 and user.entkbn=0
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 课程详情内推荐课程 -->
+	<select id="findTeacherRecommendCourse" parameterType="map" resultType="appRecommendCourse">
+		select 
+			courseid,  coursename, coursepic, coursemoney, courselimit type, browsingcount study_count
+		from 
+			t_course
+		where 
+			courseid != #{courseid} and userid=#{teacherid} and auth = 2 and 
+			flag=1 and entkbn = 0 order by createtime desc
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

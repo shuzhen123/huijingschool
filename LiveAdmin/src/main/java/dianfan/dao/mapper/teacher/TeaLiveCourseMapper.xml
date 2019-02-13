@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.teacher.TeaLiveCourseMapper">
+	<!-- 根据条件获取直播课程总条数 -->
+	<select id="findLiveCourseCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from
+			t_course cour, t_viplevel kind
+		where
+			cour.coursetypecode=kind.id and
+			<if test="coursename != null and coursename != ''">
+				<bind name="_coursename_" value="'%' + coursename + '%'" />
+				cour.coursename like #{_coursename_} and
+			</if>
+			<choose>
+				<when test="coursekind != null and coursekind != ''">cour.coursekind = #{coursekind} and </when>
+				<otherwise>(cour.coursekind = 1 or cour.coursekind = 2) and </otherwise>
+			</choose>
+			<if test="flag != null and flag != ''">cour.flag = #{flag} and </if>
+			<if test="liveflag != null and liveflag != ''">cour.liveflag = #{liveflag} and </if>
+			<if test="auth != null and auth != ''">cour.auth = #{auth} and </if>
+			<if test="kind != null and kind != ''">cour.coursetypecode = #{kind} and </if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				cour.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			cour.userid=#{teacherid} and cour.entkbn = 0 and kind.entkbn = 0
+	</select>
+
+	<!-- 根据条件获取直播课程列表  -->
+	<select id="findLiveCourses" parameterType="map" resultType="liveCourse">
+		select
+			course.*, notice.starttime, notice.endtime, user.realname
+		from
+			(
+				select
+					course.courseid, course.userid, course.coursetypecode, course.coursekind, course.coursename, course.coursedes, 
+					course.auth, course.thumbsupcount, course.flag, course.liveflag, course.createtime, kind.levelname coursetypename
+				from 
+					t_course course, t_viplevel kind
+				where
+					course.coursetypecode=kind.id
+					<if test="coursename != null and coursename != ''">
+						<bind name="_coursename_" value="'%' + coursename + '%'" />
+						and course.coursename like #{_coursename_}
+					</if>
+					<choose>
+						<when test="coursekind != null and coursekind != ''">and course.coursekind = #{coursekind}</when>
+						<otherwise>and (course.coursekind = 1 or course.coursekind = 2) </otherwise>
+					</choose>
+					<if test="flag != null and flag != ''">and course.flag = #{flag} </if>
+					<if test="liveflag != null and liveflag != ''">and course.liveflag = #{liveflag} </if>
+					<if test="auth != null and auth != ''">and course.auth = #{auth} </if>
+					<if test="kind != null and kind != ''">and course.coursetypecode = #{kind} </if>
+					<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+						<bind name="_starttime" value="starttime + ' 00:00:00'" />
+						<bind name="endtime_" value="endtime + ' 23:59:59'" />
+						and course.createtime between #{_starttime} and #{endtime_}
+					</if>
+					and course.userid=#{teacherid} and course.entkbn = 0 and kind.entkbn = 0
+			) course left join t_userinfo user on course.userid = user.userid
+			left join t_course_live_notice notice on course.courseid = notice.courseid
+			order by course.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+
+	<!-- 直播课程添加 -->
+	<insert id="addLiveCourse" parameterType="course">
+		insert into t_course 
+			(
+				 courseid, userid, recommendflag, coursekind, coursename, coursepic, coursetypecode,
+				 coursedes, auth, bannerflag, thumbsupcount, flag, liveflag, createtime, entkbn
+			) 
+		values 
+			(
+				 #{courseid}, #{userid}, 0, #{coursekind}, #{coursename}, #{coursepic}, #{coursetypecode}, #{coursedes}, 1, 
+				 0, 0, 1, 3, now(), 0
+			)
+	</insert>
+	
+	<!-- 添加预告时间 -->
+	<insert id="addLiveCourseNotice" parameterType="map">
+		<bind name="starttime_" value="starttime + ':00'"/>
+		<bind name="endtime_" value="endtime + ':00'"/>
+		insert into t_course_live_notice (id, courseid, starttime, endtime) values 
+		(replace(uuid(),'-',''), #{courseid}, #{starttime_}, #{endtime_})
+	</insert>
+	
+	<!-- 直播课程修改 -->
+	<select id="editLiveCourse" parameterType="course">
+		update t_course set
+			coursename = #{coursename},
+			coursekind = #{coursekind},
+			coursetypecode = #{coursetypecode},
+			<if test="auth != null and auth != ''">auth = #{auth},</if>
+			<if test="flag != null">flag = #{flag},</if>
+			<if test="coursepic != null">coursepic = #{coursepic},</if>
+			coursedes = #{coursedes}
+		where courseid=#{courseid}
+	</select>
+	
+	<!-- 修改直播时间  -->
+	<update id="editLiveCourseNotice" parameterType="map">
+		<bind name="starttime_" value="starttime + ':00'"/>
+		<bind name="endtime_" value="endtime + ':00'"/>
+		update t_course_live_notice set starttime = #{starttime}, endtime = #{endtime} where courseid = #{courseid}
+	</update>
+	
+	<!-- 直播课程详情+视频数据 -->
+	<select id="getLiveCourseInfoAndVideo" parameterType="string" resultType="liveCourse">
+		select
+			 cour.courseid, cour.coursekind, cour.coursename, cour.coursepic, cour.coursedes,
+			 cour.auth, cour.bannerflag, cour.thumbsupcount, cour.flag, cour.liveflag, cour.createtime, 
+			 noti.starttime, noti.endtime,
+			 video.videoid, video.videourl,
+			 concat(kind.levelname, '（', kind.money, ' 元）') coursetypename
+		from
+			t_course cour left join t_course_live_notice noti on cour.courseid=noti.courseid
+			left join t_videos video on cour.courseid=video.courseid 
+			left join t_viplevel kind on cour.coursetypecode=kind.id
+		where 
+			cour.courseid=#{courseid}
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

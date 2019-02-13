@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppCoursePurchaseMapper">
+
+	<!-- 根据条件获取课程订单总数 -->
+	<select id="findCourseOrderCount" parameterType="map" resultType="int">
+		select count(*) 
+		from t_courseorders 
+		where 
+			userid=#{userid} 
+			<if test="paystatus == 0">
+				<!-- 未支付 -->
+				and paystatus=0 and endpaytime > now()
+			</if> 
+			<if test="paystatus == 1">
+				<!-- 已支付 -->
+				and paystatus=#{paystatus}
+			</if> 
+			and entkbn=0
+	</select>
+	
+	<!-- 根据条件获取课程订单列表 -->
+	<select id="findCourseOrderData" parameterType="map" resultType="courseOrderList">
+		select 
+			orders.*, rel.coursename, rel.coursepic
+		from 
+			(
+				select 
+					orderno,paystatus,createtime,endpaytime,paytime,money
+				from
+					t_courseorders
+				where
+					userid=#{userid}
+					<if test="paystatus == 0">
+						<!-- 未支付 -->
+						and paystatus=0 and endpaytime > now()
+					</if> 
+					<if test="paystatus == 1">
+						<!-- 已支付 -->
+						and paystatus=#{paystatus}
+					</if> 
+					and entkbn=0 limit #{start}, #{offset}
+			)orders, 
+			(
+				select 
+					rel.orderid, group_concat(cour.coursename) coursename, cour.coursepic
+				from 
+					t_course_orders_relation rel, t_course cour
+				where 
+					rel.courseid=cour.courseid group by rel.orderid
+			)rel
+		where
+			orders.orderno=rel.orderid order by orders.paystatus, orders.createtime desc
+	</select>
+	
+	<!-- 根据课程id获取订单总金额 -->
+	<select id="getPriceByCourseids" parameterType="list" resultType="bigDecimal">
+		select sum(coursemoney)
+		from t_course
+		where 
+			courseid in 
+			<foreach item="item" index="index" collection="array" open="(" separator="," close=")">  
+				#{item}
+			</foreach>
+	</select>
+	
+	<!-- 写入订单与课程关系 -->
+	<insert id="createCourseOrderRelation" parameterType="map">
+		insert into t_course_orders_relation (id, orderid, courseid) values
+		<foreach item="item" index="index" collection="cids" separator=",">  
+			(replace(uuid(),'-',''), #{orderno}, #{item})
+		</foreach>
+	</insert>
+	
+	<!-- 清空购物车中的选中课程 -->
+	<update id="cleanCart" parameterType="list">
+		update t_shopping_cart set entkbn=9 where userid=#{userid} and courseid in
+		<foreach item="item" index="index" collection="cids" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</update>
+	
+	<!-- 查看订单详情 -->
+	<resultMap type="courseOrder" id="courseOrderMap">
+		<id column="orderno" property="orderno"/>
+		<!-- 一对多关系 -->
+		<collection property="courselist" ofType="cartCourse" select="findOrderCourse" column="orderno">
+			<id column="orderid" property="id"/>
+		</collection>
+	</resultMap>
+	<!-- 查询一条订单 -->
+	<select id="getCourseOrderDetail" parameterType="map" resultMap="courseOrderMap">
+		select
+			orders.orderno, orders.userid, orders.cashcouponid, orders.money, orders.paystatus, 
+			orders.paytype, orders.paytime, orders.endpaytime, orders.createtime, coupon.*
+		from 
+			t_courseorders orders left join (
+				select 
+					cc.id, ca.cpname, ca.price 
+				from 
+					t_ccrelation cc, t_cashcoupon ca 
+				where 
+					cc.cashid=ca.id and cc.userid=#{userid}
+			) coupon on orders.cashcouponid=coupon.id
+		where 
+			orders.orderno=#{orderid} and orders.userid=#{userid}
+	</select>
+	<!-- 一条订单对应多个课程 -->
+	<select id="findOrderCourse" parameterType="string" resultType="cartCourse">
+		select
+			relat.orderid, course.courseid, course.coursename, course.coursepic, course.coursemoney
+		from 
+			t_course_orders_relation relat, t_course course
+		where 
+			relat.courseid=course.courseid and relat.orderid=#{orderno}
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

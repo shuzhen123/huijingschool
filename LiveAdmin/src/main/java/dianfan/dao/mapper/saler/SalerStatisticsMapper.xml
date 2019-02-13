@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.saler.SalerStatisticsMapper">
+	<sql id="condition_param">
+		<if test="telno != null and telno != ''">
+			<!-- 用户账号 -->
+			<bind name="telno_" value="telno + '%'" />
+			and user.telno like #{telno_}
+		</if>
+		<if test="nickname != null and nickname != ''">
+			<!-- 用户昵称 -->
+			<bind name="nickname_" value="nickname + '%'" />
+			and user.nickname like #{nickname_}
+		</if>
+		<if test="orderno != null and orderno != ''">
+			<!-- 订单号-->
+			<bind name="orderno_" value="orderno + '%'" />
+			and orders.orderno like #{orderno_}
+		</if>
+		<if test="paystatus != null and paystatus != ''">
+			<!-- 支付状态 -->
+			and orders.paystatus=#{paystatus}
+		</if>
+		<if test="entkbn != null and entkbn != ''">
+			<!-- 订单状态-->
+			and orders.entkbn=#{entkbn}
+		</if>
+		<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+			<!-- 使用时间搜索 -->
+			<bind name="_starttime" value="starttime + ' 00:00:00'" />
+			<bind name="endtime_" value="endtime + ' 23:59:59'" />
+			and orders.createtime between #{_starttime} and #{endtime_}
+		</if>
+		and orders.userid=user.userid and ((orders.paystatus=0 and orders.endpaytime > now()) or orders.paystatus=1)
+	</sql>
+	<!-- 代理商下用户课程消费订单总数量 -->
+	<select id="findCourseOrderCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_courseorders orders, t_customer cust, t_userinfo user
+		where 
+			orders.userid=cust.userid and cust.dtsmuserid=#{saleid}
+			<include refid="condition_param" />
+	</select>
+	
+	<!-- 代理商下用户课程消费订单数据 -->
+	<select id="findCourseOrder" parameterType="map" resultType="courseOrderCollect">
+		select
+			data.*, rel.coursename
+		from
+			(select
+				orders.*, saler.realname, cash.cpname, cash.price
+			from
+				(
+					select 
+						orders.orderno, orders.userid, orders.cashcouponid, orders.money, orders.paystatus, orders.paytype, 
+						orders.paytime, orders.validitytime, orders.createtime, orders.entkbn,
+						user.telno, user.nickname, cust.dtsmuserid salerid
+					from 
+						t_courseorders orders, t_customer cust, t_userinfo user
+					where 
+						orders.userid=cust.userid and cust.dtsmuserid=#{saleid}
+						<include refid="condition_param" />
+						order by orders.createtime desc limit #{start}, #{length}
+				)orders left join t_userinfo saler on orders.salerid=saler.userid
+				left join (
+					select 
+						cc.id, ca.cpname, ca.price 
+					from 
+						t_ccrelation cc, t_cashcoupon ca 
+					where 
+						cc.cashid=ca.id and cc.userid in (
+							select userid from t_customer where dtagentuserid=#{saleid}
+						)
+				)cash on orders.cashcouponid=cash.id
+			)data, (
+						select 
+							rel.orderid, group_concat(cour.coursename) coursename
+						from 
+							t_course_orders_relation rel, t_course cour
+						where 
+							rel.courseid=cour.courseid group by rel.orderid
+					)rel
+		where data.orderno=rel.orderid order by data.createtime desc
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

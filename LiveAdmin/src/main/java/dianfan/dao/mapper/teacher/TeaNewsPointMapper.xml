@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.teacher.TeaNewsPointMapper">
+	
+	<!-- 根据条件获取观点数量 -->
+	<select id="findViewpointCount" parameterType="map" resultType="int">
+		select count(*) from t_infomation
+		where
+			userid = #{teacherid} and
+			<choose>
+				<when test="infomationtitle != null and infomationtitle != ''">
+					<bind name="_infomationtitle_" value="'%' + infomationtitle + '%'" />
+					infomationtitle like #{_infomationtitle_} and
+				</when>
+				<when test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+					<bind name="_starttime" value="starttime + ' 00:00:00'" />
+					<bind name="endtime_" value="endtime + ' 23:59:59'" />
+					createtime between #{_starttime} and #{endtime_} and
+				</when>
+			</choose>
+			informationmodelid='-1' and entkbn=0 order by createtime desc
+	</select>
+	
+	<!-- 根据条件获取观点数据 -->
+	<select id="findViewpoint" parameterType="map" resultType="infomation">
+		select 
+			 id, userid, infomationtitle, picurl, content, descrption, readcounts, thumbsupcounts, createtime
+		from t_infomation
+		where 
+			userid = #{teacherid} and
+			<choose>
+				<when test="infomationtitle != null and infomationtitle != ''">
+					<bind name="_infomationtitle_" value="'%' + infomationtitle + '%'" />
+					infomationtitle like #{_infomationtitle_} and
+				</when>
+				<when test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+					<bind name="_starttime" value="starttime + ' 00:00:00'" />
+					<bind name="endtime_" value="endtime + ' 23:59:59'" />
+					createtime between #{_starttime} and #{endtime_} and
+				</when>
+			</choose>
+			informationmodelid='-1' and entkbn=0 order by createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 添加观点数据 -->
+	<insert id="addNewsPointInfo" parameterType="infomation">
+		insert into t_infomation 
+			(id, informationmodelid, userid, infomationtitle, content, descrption, readcounts, thumbsupcounts, createtime, entkbn)
+		values
+			(replace(uuid(), "-", ""), '-1', #{userid}, #{infomationtitle}, #{content}, #{descrption}, 0, 0, now(), 0)
+	</insert>
+	
+	<!-- 根据id删除观点数据 -->
+	<update id="delNewsPointByIds" parameterType="list">
+		update t_infomation set entkbn = 9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

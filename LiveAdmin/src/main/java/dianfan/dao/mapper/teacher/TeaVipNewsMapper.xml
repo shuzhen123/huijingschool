@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.teacher.TeaVipNewsMapper">
+	<!-- 根据条件查找咨讯总条数  -->
+	<select id="findNewsCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_vipstrategy vst, t_viplevel kind
+		where 
+			vst.kind=kind.id and vst.userid = #{teacherid} and vst.entkbn = 0 and kind.entkbn = 0
+			<if test="showflag ==0 or showflag == 1">
+				and vst.showflag = #{showflag}
+			</if>
+			<if test="articaltitle != null and articaltitle != ''">
+				<bind name="_articaltitle_" value="'%' + articaltitle + '%'" />
+				and vst.articaltitle like #{_articaltitle_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and vst.tdays between #{_starttime} and #{endtime_}
+			</if>
+			<if test="checkflag ==0 or checkflag == 1">
+				and vst.checkflag = #{checkflag}
+			</if>
+			<if test="kind != null and kind != ''">
+				and vst.kind = #{kind}
+			</if>
+	</select>
+	
+	<!-- 根据条件查找咨讯列表  -->
+	<select id="findNews" parameterType="map" resultType="vipInfomation">
+		select
+			vst.articalid, vst.kind, vst.tdays, vst.articaltitle, vst.picurl, vst.content, 
+			vst.readcount, vst.showflag, vst.checkflag, vst.cause,
+			kind.levelname kindname
+		from 
+			t_vipstrategy vst, t_viplevel kind
+		where 
+			vst.kind=kind.id and vst.userid = #{teacherid} and vst.entkbn = 0 and kind.entkbn = 0
+			<if test="showflag ==0 or showflag == 1">
+				and vst.showflag = #{showflag}
+			</if>
+			<if test="articaltitle != null and articaltitle != ''">
+				<bind name="_articaltitle_" value="'%' + articaltitle + '%'" />
+				and vst.articaltitle like #{_articaltitle_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and vst.tdays between #{_starttime} and #{endtime_}
+			</if>
+			<if test="checkflag ==0 or checkflag == 1">
+				and vst.checkflag = #{checkflag}
+			</if>
+			<if test="kind != null and kind != ''">
+				and vst.kind = #{kind}
+			</if>
+			 order by vst.tdays desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 添加咨讯数据 -->
+	<insert id="addVipNewsInfo" parameterType="vipInfomation">
+		insert into t_vipstrategy 
+			(articalid, userid, kind, tdays, articaltitle, picurl, content, readcount, showflag, checkflag, createtime, entkbn)
+		values
+			(#{articalid}, #{userid}, #{kind}, now(), #{articaltitle}, #{picurl}, #{content}, 0, #{showflag}, #{checkflag}, now(), 0)
+	</insert>
+	
+	<!-- 根据id删除咨讯数据 -->
+	<update id="delVipNewsByIds" parameterType="list">
+		update t_vipstrategy set entkbn = 9 where articalid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 修改咨讯数据 -->
+	<update id="editVipNewsInfo" parameterType="vipInfomation">
+		update t_vipstrategy set 
+			articaltitle = #{articaltitle}, showflag = #{showflag}, kind=#{kind},
+			<if test="picurl != null and picurl != ''">picurl = #{picurl},</if>
+			content = #{content}, checkflag = 0
+		where articalid = #{articalid}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentBusiMapper">
+	<!-- 根据id删除等级 -->
+	<update id="delSalerLevel" parameterType="list">
+		update t_level set entkbn=9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 根据levelid删除对应的业务员-等级关系 -->
+	<delete id="delSalerLevelRelation" parameterType="list">
+		delete from t_level_saler where levelid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</delete>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

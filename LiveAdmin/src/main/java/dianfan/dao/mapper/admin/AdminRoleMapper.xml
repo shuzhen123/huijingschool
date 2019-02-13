@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.AdminRoleMapper">
+
+	<!-- 根据status获取权限 -->
+	<select id="findRoleByStatus"  parameterType="role" resultType="role">
+		select * from t_jurisdiction
+		<where>
+			<if test="flag != null and flag != ''">
+				flag = #{flag}
+			</if>
+		</where>
+	</select>
+	
+	<!-- 根据管理员id获取管理员已拥有的权限列表 -->
+	<select id="findRoleByAdminId" parameterType="string" resultType="role">
+		select 
+			role.jurisdictionid, role.jurisdictionname, lower(role.functionname) functionname
+		from
+			t_u_j tuj, t_jurisdiction role
+		where
+			tuj.juridictionid = role.jurisdictionid and tuj.userid = #{userid} and role.flag = 1
+	</select>
+
+	<!-- 根据代理商id获取已拥有的权限列表 -->
+	<select id="findAgentRoleByUserId" parameterType="string" resultType="role">
+		select 
+			role.jurisdictionid, role.jurisdictionname, lower(role.functionname) functionname
+		from
+			t_agent_user tau, t_p_agentj tpaj, t_agent_jurisdiction role
+		where
+			tau.positionid = tpaj.positionid and tpaj.juridictionid = role.jurisdictionid
+			and tau.salesmanuserid = #{userid} and role.flag = 1
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

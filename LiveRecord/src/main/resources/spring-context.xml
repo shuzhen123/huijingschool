@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/tx
+	http://www.springframework.org/schema/tx/spring-tx.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<context:component-scan base-package="dianfan.service" >
+		<!-- annotation为spting-mvc中解析的内容 -->
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+	</context:component-scan>
+	
+	<!-- 引入属性文件 -->
+	<context:property-placeholder location="classpath:db.properties,classpath:config.properties" file-encoding="UTF-8"/>
+	
+	<!-- 配置数据源 -->
+	<!--dataSource -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass">
+			<value>${jdbc}</value>
+		</property>
+		<property name="jdbcUrl">
+			<value>${driver-url}
+			</value>
+		</property>
+		<property name="user" value="${user}" />
+		<property name="password" value="${password}" />
+		<property name="minPoolSize">
+			<value>${minPoolSize}</value>
+		</property>
+		<property name="maxPoolSize">
+			<value>${maxPoolSize}</value>
+		</property>
+		<property name="initialPoolSize">
+			<value>${initialPoolSize}</value>
+		</property>
+		<property name="maxIdleTime">
+			<value>${maxIdleTime}</value>
+		</property>
+		<property name="acquireIncrement">
+			<value>${acquireIncrement}</value>
+		</property>
+		<property name="maxStatements">
+			<value>${maxStatements}</value>
+		</property>
+		<property name="idleConnectionTestPeriod">
+			<value>${idleConnectionTestPeriod}</value>
+		</property>
+		<property name="acquireRetryAttempts">
+			<value>${acquireRetryAttempts}</value>
+		</property>
+		<property name="acquireRetryDelay">
+			<value>${acquireRetryDelay}</value>
+		</property>
+		<property name="autoCommitOnClose">
+			<value>${autoCommitOnClose}</value>
+		</property>
+		<property name="breakAfterAcquireFailure">
+			<value>${breakAfterAcquireFailure}</value>
+		</property>
+		<property name="automaticTestTable">
+			<value>${automaticTestTable}</value>
+		</property>
+		<property name="checkoutTimeout">
+			<value>${checkoutTimeout}</value>
+		</property>
+	</bean>
+	
+	<!-- 配置SqlSessionFactory -->
+	<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 数据源 -->
+		<property name="dataSource" ref="dataSource" />
+		<!-- 配置SqlMapConfig.xml -->
+		<property name="configLocation" value="classpath:SqlMapConfig.xml" />
+	</bean>
+
+	<!-- 使用mapper批量扫描器 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!-- 会话工厂 -->
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactoryBean" />
+		<!-- 扫描包路径 多个包中间用半角逗号分隔 -->
+		<property name="basePackage" value="dianfan.dao.mapper.*" />
+	</bean>
+
+	<!-- 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<!-- 开启事务扫描 -->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	
+	<!-- 线程池 -->
+	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+         <!-- 线程池维护线程的最少数量 -->
+         <property name="corePoolSize" value="5" />
+         <!-- 允许的空闲时间 -->
+         <property name="keepAliveSeconds" value="200" />
+         <!-- 线程池维护线程的最大数量 -->
+         <property name="maxPoolSize" value="10" />
+         <!-- 缓存队列 -->
+         <property name="queueCapacity" value="20" />
+         <!-- 对拒绝task的处理策略 -->
+         <property name="rejectedExecutionHandler">
+             <bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy" />
+         </property>
+     </bean>
+</beans>

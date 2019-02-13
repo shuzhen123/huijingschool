@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.PhoneRecordMapper">
+	<!-- 根据条件获取业务员通话记录列表 -->
+	<select id="findPhoneRecordCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_userinfo info 
+			left join t_csclassify_customer_related rel on info.userid=rel.customerid
+			left join t_csclassify cla on rel.csclassifyid=cla.id
+			left join (
+				select
+					tell.customerid, tell.createtime
+		        from 
+		          	(select * from t_salecustomer_tellog where salerid=#{salerid} and entkbn=0) tell 
+		          	left join t_csclassify_customer_related rel on tell.customerid=rel.customerid
+		        where 
+		          	not exists
+		          	(
+		            	select 1 
+		            	from (select * from t_salecustomer_tellog where salerid=#{salerid} and entkbn=0) lim
+		            	where customerid= tell.customerid and tell.createtime &lt; createtime
+		          	)
+			) tell on info.userid=tell.customerid
+			left join t_collect col on info.userid =col.userid 
+		where 
+			info.userid in(
+				select userid from t_customer where dtsmuserid=#{salerid}
+			)
+			<if test="classid != null and classid != ''">
+				and rel.csclassifyid = #{classid}
+			</if>
+			<if test="contacted == 0">
+				and tell.createtime is null
+			</if>
+			<if test="contacted == 1">
+				and tell.createtime is not null
+			</if>
+			<if test="collected == 0">
+				and col.salerid is null
+			</if>
+			<if test="collected == 1">
+				and col.salerid is not null
+			</if>
+	</select>
+	
+	<!-- 根据条件获取业务员通话记录列表 -->
+	<select id="findPhoneRecord" parameterType="map" resultType="PhoneRecordInfo">
+		select 
+			info.userid customerid, info.nickname, info.telno, tell.createtime, rel.allcontent memo,
+			rel.csclassifyid classid, IFNULL(cla.name, '未分类') classname,
+			IF(tell.createtime is null, 0, 1) contacted, IF(col.salerid is null, 0, 1) collected
+		from 
+			t_userinfo info 
+			left join t_csclassify_customer_related rel on info.userid=rel.customerid
+			left join t_csclassify cla on rel.csclassifyid=cla.id
+			left join (
+				select
+					tell.customerid, tell.starttime createtime
+		        from 
+		          	(select * from t_salecustomer_tellog where salerid=#{salerid} and entkbn=0) tell 
+		          	left join t_csclassify_customer_related rel on tell.customerid=rel.customerid
+		        where 
+		          	not exists
+		          	(
+		            	select 1 
+		            	from (select * from t_salecustomer_tellog where salerid=#{salerid} and entkbn=0) lim
+		            	where customerid= tell.customerid and tell.createtime &lt; createtime
+		          	)
+			) tell on info.userid=tell.customerid
+			left join t_collect col on info.userid =col.userid 
+		where 
+			info.userid in(
+				select userid from t_customer where dtsmuserid=#{salerid}
+			)
+			<if test="classid != null and classid != ''">
+				and rel.csclassifyid = #{classid}
+			</if>
+			<if test="contacted == 0">
+				and tell.createtime is null
+			</if>
+			<if test="contacted == 1">
+				and tell.createtime is not null
+			</if>
+			<if test="collected == 0">
+				and col.salerid is null
+			</if>
+			<if test="collected == 1">
+				and col.salerid is not null
+			</if>
+			order by tell.createtime desc limit #{start}, #{length}
+	</select>
+	
+	<!-- 新增通话记录 -->
+	<select id="addCallVoice" parameterType="callVoice">
+		insert into t_salecustomer_tellog 
+			(id, salerid, customerid, telno, status, calltimes, voicetitle, starttime, endtime, createtime, entkbn) 
+		values
+			(#{id}, #{salerid}, #{customerid}, #{telno}, #{status}, #{calltimes}, #{voicetitle}, #{starttime}, #{endtime}, now(), 0)
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

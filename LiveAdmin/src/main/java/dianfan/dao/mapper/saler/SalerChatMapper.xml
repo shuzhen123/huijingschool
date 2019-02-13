@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.saler.SalerChatMapper">
+
+	<!-- 根据条件获取通话记录总条数  -->
+	<select id="findSalerPhoneCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_salecustomer_tellog tell 
+			<if test="(account != null and account != '') or
+					  (nickname != null and nickname != '')">
+				left join t_userinfo info on tell.customerid=info.userid
+			</if>
+		where 
+			<if test="account != null and account != ''">
+				<!-- 客户账号 -->
+				<bind name="account_" value="account + '%'" />
+				info.telno like #{account_} and
+			</if>
+			<if test="nickname != null and nickname != ''">
+				<!-- 客户昵称  -->
+				<bind name="_nickname_" value="'%' + nickname + '%'" />
+				info.nickname like #{_nickname_} and
+			</if>
+			<if test="phone != null and phone != ''">
+				<!-- 拨打手机号 -->
+				<bind name="phone_" value="phone + '%'" />
+				tell.telno like #{phone_} and
+			</if>
+			<if test="collect != null and collect != ''">
+				<!-- 收藏 -->
+				tell.collectionflag = #{collect} and
+			</if>
+			<if test="status != null and status != ''">
+				<!-- 收藏 -->
+				tell.status = #{status} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				tell.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			tell.salerid=#{saleid} and tell.entkbn = 0
+	</select>
+	
+	<!-- 根据条件获取客户通话记录列表 -->
+	<select id="findSalerPhoneList" parameterType="map" resultType="salerCall">
+		select 
+			 tell.id, tell.salerid, tell.customerid, tell.telno, tell.status, tell.calltimes, tell.voicetitle,
+			 tell.voicepath, tell.collectionflag, tell.starttime, tell.endtime, tell.createtime,
+			 info.telno account, info.nickname, IFNULL(vio.count,0) count
+		from 
+			t_salecustomer_tellog tell left join t_userinfo info on tell.customerid=info.userid
+			left join (
+				select salecustomer_tellog_id, count(*) count from t_reperecs where type=2 and saleid=#{saleid} group by salecustomer_tellog_id
+			) vio on tell.id = vio.salecustomer_tellog_id
+		where
+			<if test="account != null and account != ''">
+				<!-- 客户账号 -->
+				<bind name="account_" value="account + '%'" />
+				info.telno like #{account_} and
+			</if>
+			<if test="nickname != null and nickname != ''">
+				<!-- 客户昵称  -->
+				<bind name="_nickname_" value="'%' + nickname + '%'" />
+				info.nickname like #{_nickname_} and
+			</if>
+			<if test="phone != null and phone != ''">
+				<!-- 拨打手机号 -->
+				<bind name="phone_" value="phone + '%'" />
+				tell.telno like #{phone_} and
+			</if>
+			<if test="collect != null and collect != ''">
+				<!-- 收藏 -->
+				tell.collectionflag = #{collect} and
+			</if>
+			<if test="status != null and status != ''">
+				<!-- 收藏 -->
+				tell.status = #{status} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				tell.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			tell.salerid=#{saleid} and tell.entkbn = 0 order by tell.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 业务员聊天记录数量 -->
+	<select id="findSalerChatCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_words word, t_userinfo info
+		where 
+			word.customerid=info.userid and
+			<if test="account != null and account != ''">
+				<!-- 客户账号 -->
+				<bind name="account_" value="account + '%'" />
+				info.telno like #{account_} and
+			</if>
+			<if test="nickname != null and nickname != ''">
+				<!-- 客户昵称  -->
+				<bind name="_nickname_" value="'%' + nickname + '%'" />
+				info.nickname like #{_nickname_} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				word.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			word.saleid=#{saleid} and word.entkbn=0
+	</select>
+	
+	<!-- 业务员聊天记录管理列表 -->
+	<select id="findSalerChatList" parameterType="map" resultType="chatWord">
+		select 
+			hist.wordid, hist.words, word.customerid, info.telno, info.nickname, word.createtime, IFNULL(vio.count,0) count
+		from 
+			t_words_history hist, t_userinfo info,
+			(
+				select userid from t_customer where dtsmuserid=#{saleid}
+			) cust,
+			t_words word
+			left join (
+				select wordsid, count(*) count from t_reperecs where type=1 and saleid=#{saleid} group by wordsid
+			) vio on word.id = vio.wordsid
+		where 
+			not exists
+			(
+				select 1 from t_words_history where saleid=#{saleid}
+				and entkbn=0 and wordid= hist.id and hist.createtime &lt; createtime
+			) 
+			<if test="account != null and account != ''">
+				<!-- 客户账号 -->
+				<bind name="account_" value="account + '%'" />
+				and info.telno like #{account_}
+			</if>
+			<if test="nickname != null and nickname != ''">
+				<!-- 客户昵称  -->
+				<bind name="_nickname_" value="'%' + nickname + '%'" />
+				and info.nickname like #{_nickname_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and word.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and cust.userid=hist.customerid
+			and word.id=hist.wordid and word.customerid=info.userid and 
+			word.entkbn=0 and hist.entkbn=0 order by word.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 单客户跟踪记录列表 -->
+	<select id="findSalerChatAndUserList" parameterType="map" resultType="chatWord">
+		select 
+			d.*, saler.realname
+		from (
+			select 
+				hist.wordid, hist.words, word.customerid, info.telno, info.nickname, word.saleid, word.createtime, IFNULL(vio.count,0) count
+			from 
+				t_words_history hist, t_userinfo info, t_words word
+				left join (
+					select wordsid, count(*) count from t_reperecs where type=1 group by wordsid
+				) vio on word.id = vio.wordsid
+			where 
+				not exists
+				(
+					select 1 from t_words_history where customerid=#{customerid}
+					and entkbn=0 and wordid= hist.id and hist.createtime &lt; createtime
+				) 
+				and word.id=hist.wordid and word.customerid=info.userid and 
+				word.entkbn=0 and hist.entkbn=0 order by word.createtime desc
+				limit #{start}, #{length}
+			)d left join t_userinfo saler on d.saleid=saler.userid 
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

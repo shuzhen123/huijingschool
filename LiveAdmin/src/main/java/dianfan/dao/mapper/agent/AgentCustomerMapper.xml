@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentCustomerMapper">
+	<!--  获取代理商资源池用户数据 -->
+	<select id="findUnbindCustomer" parameterType="map" resultType="userInfo">
+		select 
+			u.userid, u.telno, u.nickname, u.realname, u.sex, u.prov, u.restype, u.createtime
+		from 
+			t_customer cust, t_userinfo u
+		where
+			cust.userid=u.userid and cust.dtagentuserid=#{agentid} and cust.dtsmuserid is null and u.entkbn=1
+			<if test="telno != null and telno != ''">
+				<bind name="telno_" value="telno + '%'"/>
+				and u.telno like #{telno_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and u.realname like #{realname_}
+			</if>
+			<if test="sex == 0 or sex == 1 or sex == 2">
+				and u.sex=#{sex}
+			</if>
+			order by u.createtime desc
+			limit #{start}, #{length}
+	</select>
+	
+	<!-- 查找telnos中已被注册的手机号码 -->
+	<select id="checkRegisterTelno" parameterType="list" resultType="string">
+		select telno from t_userinfo where role=1 and (entkbn=0 or entkbn=1) and telno in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</select>
+	
+	<!-- 批量插入号码,生成用户账号 -->
+	<insert id="telnoBatchImport" parameterType="list">
+		insert into t_userinfo 
+		(
+			userid, 
+			telno, 
+			nickname, 
+			realname, 
+			sex, 
+			prov, 
+			restype,
+			createid, 
+			registertime, 
+			registerstatus, 
+			role, 
+			riskratingfalg, 
+			createtime, 
+			entkbn
+		) values
+		<foreach item="item" index="index" collection="list" separator=",">
+			(
+				#{item.userid}, 
+				#{item.telno}, 
+				#{item.nickname}, 
+				#{item.realname}, 
+				#{item.sex}, 
+				#{item.prov}, 
+				#{item.restype}, 
+				#{item.createid},
+				now(), 
+				1, 
+				1, 
+				0, 
+				now(), 
+				1
+			)
+		</foreach>
+	</insert>
+	
+	<!-- 建立用户与代理商关系 -->
+	<insert id="createAgentUserRelation" parameterType="list">
+		insert into t_customer (id, userid, dtagentuserid, entkbn) values
+		<foreach item="item" index="index" collection="list" separator=",">
+			(replace(uuid(),'-',''), #{item.userid}, #{item.createid}, 0)
+		</foreach>
+	</insert>
+	
+	<!-- 建立用户等级关系 -->
+	<insert id="createUserClassRelation" parameterType="list">
+		insert into t_csclassify_customer_related (id, customerid, createtime, entkbn) values
+		<foreach item="item" index="index" collection="list" separator=",">
+			(replace(uuid(),'-',''), #{item.userid}, now(), 0)
+		</foreach>
+	</insert>
+	
+	<!-- ***************************客户管理***************************** -->
+	<!-- 根据条件获取代理商下用户总条数  -->
+	<select id="findCustomerUserCount" parameterType="map" resultType="int">
+		select
+			count(*)
+		from 
+			t_userinfo info, (
+				select 
+					rel.customerid, cla.id levelid
+				from 
+					t_csclassify_customer_related rel left join t_csclassify cla on rel.csclassifyid=cla.id
+				where 
+					<if test="levelid != null">
+						<if test="levelid == ''">
+							(rel.csclassifyid is null or rel.csclassifyid='') and
+						</if>
+						<if test="levelid != ''">
+							rel.csclassifyid = #{levelid} and
+						</if>
+					</if>
+					rel.customerid in(
+						<!-- 根据代理商的id 查出对应代理商下面的所有用户的id -->
+						select userid from t_customer where dtagentuserid=#{agentid}
+							and dtsmuserid in (select salesmanuserid from t_agent_user
+								<where> agentuserid=#{agentid}
+									<if test="searchdeptid != null and searchdeptid != ''">
+										and deptid=#{searchdeptid}
+									</if>
+									<if test="searchsalerid != null and searchsalerid != ''">
+										and salesmanuserid=#{searchsalerid}
+									</if>
+									<if test="userid != null and userid != ''">
+			                            and deptid in (select deptid from t_agentuser_depts where userid=#{userid})
+									</if>
+								</where>
+							 )
+					)
+			) lev
+		where 
+			info.userid=lev.customerid 
+			<if test="telno != null and telno != '' ">
+				<bind name="telno_" value="telno + '%' "/>
+				and info.telno like #{telno_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and info.realname like #{realname_}
+			</if>
+	</select>
+	
+	<!-- 代理商维护用户数据 -->
+	<select id="findCustomerUser" parameterType="map" resultType="agentCustomer">
+		select 
+			d.*, saler.realname salername
+		from 
+			(select
+				info.userid, info.telno, info.iconurl, info.nickname, info.realname, info.sex, info.prov, info.registertime, info.riskratingfalg, info.entkbn,
+				cus.dtsmuserid salerid,
+				lev.levelid, lev.levelname, lev.remark
+			from 
+				(	<!-- 查出用户对应的等级id，等级名称，备注内容，创建时间，加上用户的id -->
+					select 
+						rel.customerid, rel.allcontent remark, rel.createtime, cla.id levelid, cla.name levelname
+					from 
+						t_csclassify_customer_related rel left join t_csclassify cla on rel.csclassifyid=cla.id
+					where 
+						<if test="levelid != null">
+							<if test="levelid == '' ">
+								(rel.csclassifyid is null or rel.csclassifyid='') and
+							</if>
+							<if test="levelid != '' ">
+								rel.csclassifyid = #{levelid} and
+							</if>
+						</if>
+						rel.customerid in(
+							<!-- 根据代理商的id 查出对应代理商下所有的用户的id -->
+							select userid from t_customer where dtagentuserid=#{agentid}
+							    and dtsmuserid in (select salesmanuserid from t_agent_user
+								<where> agentuserid=#{agentid}
+									<if test="searchdeptid != null and searchdeptid != ''">
+										and deptid=#{searchdeptid}
+									</if>
+									<if test="searchsalerid != null and searchsalerid != ''">
+										and salesmanuserid=#{searchsalerid}
+									</if>
+									<if test="userid != null and userid != ''">
+			                            and deptid in (select deptid from t_agentuser_depts where userid=#{userid})
+									</if>
+								</where>
+								)
+						) order by rel.createtime desc 
+				) lev, t_customer cus, t_userinfo info
+			where 
+				lev.customerid=info.userid and lev.customerid=cus.userid 
+				<if test="telno != null and telno != '' ">
+				<bind name="telno_" value="telno + '%' "/>
+				and info.telno like #{telno_}
+				</if>
+				<if test="realname != null and realname != ''">
+					<bind name="realname_" value="realname + '%'"/>
+					and info.realname like #{realname_}
+				</if>
+		) d left join t_userinfo saler on d.salerid=saler.userid
+			limit #{start}, #{length}
+	</select>
+	
+	<!-- 检测业务员与用户关系重复数据 -->
+	<select id="checkAgentCustomer" parameterType="list" resultType="string">
+		select userid from t_customer where userid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</select>
+	
+	<!-- 批量转移用户资源 -->
+	<update id="moveCustomer" parameterType="map">
+		update t_customer set dtsmuserid = #{salerid}, updatetime=now() where dtagentuserid = #{agentid} and userid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 根据部门id获取员工 -->
+	<select id="findSalerByDeptid" parameterType="map" resultType="saler">
+		select 
+			info.userid, info.realname
+		from 
+			t_agent_user au, t_userinfo info
+		where 
+			au.salesmanuserid=info.userid and au.agentuserid=#{agentid} and
+			<choose>
+				<when test="deptid != null and deptid != ''">au.deptid = #{deptid}</when>
+				<otherwise>au.deptid is null</otherwise>
+			</choose>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.BannerMapper">
+	<!-- 根据轮播图id批量删除轮播图 -->
+	<update id="delBannerByIds" parameterType="list">
+		update t_banner set entkbn=9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 修改轮播图 -->
+	<update id="editBanner" parameterType="bannerInfo">
+		update t_banner set <if test="picurl != null and picurl != ''">picurl = #{picurl},</if> content = #{content} where id = #{id}
+	</update>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

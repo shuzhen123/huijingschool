@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentPersonnelMapper">
+
+	<!-- 根据条件获取部门数据 -->
+	<select id="findDept" parameterType="map" resultType="dept">
+		select 
+			dept.deptid, dept.deptname, dept.deptenable, dept.createtime, user.count
+		from 
+			t_dept dept left join
+			(
+				select deptid, count(*) count from t_agent_user 
+				where agentuserid = #{agentid} and deptid is not null group by deptid
+			) user on dept.deptid=user.deptid
+		where 
+			dept.createid = #{agentid} and dept.entkbn = 0 order by dept.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 获取可用部门列表 -->
+	<select id="findEnabledDept" parameterType="string" resultType="dept">
+		select dept.deptid, dept.deptname, user.count
+		from 
+			t_dept dept left join
+			(
+				select deptid, count(*) count from t_agent_user 
+				where agentuserid = #{agentid} and deptid is not null group by deptid
+			) user on dept.deptid=user.deptid
+		where dept.createid = #{agentid} and dept.deptenable=1 and dept.entkbn=0
+	</select>
+	
+	<!-- 获取相应岗位对应的可用部门列表 -->
+	<select id="findEnabledDeptByPosition" parameterType="map" resultType="dept">
+		select dept.deptid, dept.deptname
+		from
+			t_dept dept, t_agentuser_depts agentuser_depts
+		where dept.deptid=agentuser_depts.deptid and agentuser_depts.userid=#{userid}
+		and dept.createid = #{agentid} and dept.deptenable=1 and dept.entkbn=0
+	</select>
+
+	<!-- 删除部门 -->
+	<update id="delDept" parameterType="map">
+		update t_dept set entkbn = 9 where createid = #{agentid} and deptid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 根据条件获取业务员数量 -->
+	<select id="findSalerCount" parameterType="map" resultType="int">
+		select count(*)
+		from t_agent_user au , t_userinfo user
+		where 
+			au.salesmanuserid=user.userid and au.agentuserid=#{agentid} 
+			<if test="username != null and username != ''">
+				<bind name="username_" value="username + '%'" />
+				and user.username like #{username_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'" />
+				and user.realname like #{realname_}
+			</if>
+			<if test="dept != null">
+				<if test="dept == 'undefined'">
+					and (au.deptid is null or au.deptid='')
+				</if>
+				<if test="dept != 'undefined'">
+					and au.deptid = #{dept}
+				</if>
+			</if>
+			<if test="position != null">
+				<if test="position == 'undefined'">
+					and (au.positionid is null or au.positionid='')
+				</if>
+				<if test="position != 'undefined'">
+					and au.positionid = #{position}
+				</if>
+			</if>
+			<if test="telno != null and telno != ''">
+				<bind name="telno_" value="telno + '%'" />
+				and user.telno like #{telno_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and user.registertime between #{_starttime} and #{endtime_}
+			</if>
+			and (user.role=3 or user.role=6) and user.entkbn != 9 
+	</select>
+	
+	<!-- 根据条件获取业务员数据 -->
+	<select id="findSaler" parameterType="map" resultType="saler">
+		select 
+			saler.userid, saler.username, saler.realname, saler.telno, saler.registertime, saler.entkbn,
+			IFNULL(dept.deptname,'未设置') deptname, IFNULL(saler.levelname,'未分级') levelname
+			, IFNULL(position.positionname,'未设置') positionname
+		from
+			(
+				select 
+				    user.userid, user.username, user.realname, user.telno, user.registertime, au.deptid, au.positionid, lev.levelname, user.entkbn
+				from 
+					t_agent_user au , t_userinfo user left join 
+					(select ls.userid, le.levelname from t_level_saler ls , t_level le where ls.levelid=le.id) lev on user.userid=lev.userid
+				where 
+					au.salesmanuserid=user.userid and au.agentuserid=#{agentid} 
+					<if test="username != null and username != ''">
+						<bind name="username_" value="username + '%'" />
+						and user.username like #{username_}
+					</if>
+					<if test="realname != null and realname != ''">
+						<bind name="realname_" value="realname + '%'" />
+						and user.realname like #{realname_}
+					</if>
+					<if test="dept != null">
+						<if test="dept == 'undefined'">
+							and (au.deptid is null or au.deptid='')
+						</if>
+						<if test="dept != 'undefined'">
+							and au.deptid = #{dept}
+						</if>
+					</if>
+					<if test="position != null">
+						<if test="position == 'undefined'">
+							and (au.positionid is null or au.positionid='')
+						</if>
+						<if test="position != 'undefined'">
+							and au.positionid = #{position}
+						</if>
+					</if>
+					<if test="telno != null and telno != ''">
+						<bind name="telno_" value="telno + '%'" />
+						and user.telno like #{telno_}
+					</if>
+					<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+						<bind name="_starttime" value="starttime + ' 00:00:00'" />
+						<bind name="endtime_" value="endtime + ' 23:59:59'" />
+						and user.registertime between #{_starttime} and #{endtime_}
+					</if>
+					and (user.role=3 or user.role=6) and user.entkbn != 9 
+					<if test="length != null and length > 0">
+						limit #{start}, #{length}
+					</if>
+			) saler left join t_dept dept on saler.deptid = dept.deptid 
+			left join t_position position on saler.positionid = position.positionid
+			order by dept.createtime desc, saler.registertime desc
+	</select>
+	
+	<!-- 解绑代理商 - 员工关系 -->
+	<delete id="unbindAgentUser" parameterType="map">
+		delete from t_agent_user where agentuserid = #{agentid} and salesmanuserid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</delete>
+	
+	<!-- 释放业务员-用户关系 -->
+	<delete id="unbindSalerUserRelation" parameterType="map">
+		update t_customer set dtsmuserid=null where dtagentuserid = #{agentid} and dtsmuserid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</delete>
+	
+	<!-- 根据代理商id获取业务员任务数 -->
+	<select id="findSalerTask" parameterType="map" resultType="salerTask">
+		<bind name="first" value="date + '-01'"/>
+		<bind name="last" value="date + '-31'"/>
+		select 
+			task.userid, task.createtime, task.standpeople, task.actualpeople, info.realname
+		from 
+			t_salesmansta task, t_userinfo info 
+		where 
+			task.userid=info.userid and task.userid in(
+				select au.salesmanuserid
+				from
+					t_agent_user au, t_userinfo saler
+				where
+					au.salesmanuserid=saler.userid and saler.entkbn!=9 and au.agentuserid =#{agentid}
+			) 
+			and task.createtime between #{first} and #{last} order by task.userid, task.createtime asc
+	</select>
+
+	<!-- 根据条件获取岗位数据 -->
+	<select id="findPosition" parameterType="map" resultType="position">
+		select 
+			position.positionid, position.positionname, position.positionenable, position.createtime
+		from 
+			t_position position
+		where 
+			position.createid = #{agentid} and position.entkbn = 0 order by position.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+    <!-- 获取可用岗位列表 -->
+	<select id="findEnabledPosition" parameterType="string" resultType="position">
+		select position.positionid, position.positionname
+		from 
+			t_position position
+		where position.createid = #{agentid} and position.positionenable=1 and position.entkbn=0
+	</select>
+	
+	<!-- 删除岗位 -->
+	<update id="delPosition" parameterType="map">
+		update t_position position set position.entkbn = 9 where position.createid = #{agentid} and position.positionid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 代理商权限添加 -->
+	<insert id="addPositionRole" parameterType="map">
+		insert into t_p_agentj (id, juridictionid, positionid) values 
+		<foreach item="item" index="index" collection="add_roles" separator="," >
+			(replace(uuid(),'-',''), #{item}, #{positionid})
+		</foreach>
+	</insert>
+	
+	<!-- 代理商权限添加 -->
+	<insert id="addUserSubdepts" parameterType="map">
+		insert into t_agentuser_depts (id, deptid, userid) values 
+		<foreach item="item" index="index" collection="add_subdepts" separator="," >
+			(replace(uuid(),'-',''), #{item}, #{userid})
+		</foreach>
+	</insert>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

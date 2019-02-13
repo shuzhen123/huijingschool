@@ -1,0 +1,15 @@
+@charset "utf-8";
+/* 你自己的样式 */
+#datatable_length{
+	padding-top: 10px;
+	padding-left: 10px;
+} 
+table#datatable td {
+	text-align: center;
+}
+.modal-header h3, .modal-header .modal-title{
+	padding: 0;
+}
+.modal-header{
+	padding: 10px 15px;
+}

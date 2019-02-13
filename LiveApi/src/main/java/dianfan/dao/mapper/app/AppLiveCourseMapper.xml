@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppLiveCourseMapper">
+
+	<!-- 获取往期直播课程列表数量 -->
+	<select id="getPastLiveCourse" parameterType="map" resultType="int">
+		select 
+			count(*) 
+		from 
+			t_course 
+		where
+			<choose>
+				<when test="teacherid != null">
+					<!-- 直播间内往期直播列表 -->
+					userid=#{teacherid} and
+					(coursekind=1 or coursekind=2) and
+				</when>
+				<otherwise>
+					<!-- 往期直播列表 -->
+					coursekind=#{type} and
+				</otherwise>
+			</choose>
+			auth=2 and flag=1 and liveflag=2 and entkbn=0
+	</select>
+	
+	<!-- 获取往期直播课程列表 -->
+	<select id="getPastLiveCourseList" parameterType="map" resultType="courseList">
+		select 
+			course.courseid, course.coursename, course.coursepic, course.browsingcount
+		from 
+			t_course course, t_userinfo tea
+		where
+			course.userid=tea.userid and 
+			<choose>
+				<when test="teacherid != null">
+					<!-- 直播间内往期直播列表 -->
+					course.userid=#{teacherid} and
+					(course.coursekind=1 or course.coursekind=2) and
+				</when>
+				<otherwise>
+					<!-- 往期直播列表 -->
+					course.coursekind=#{type} and
+				</otherwise>
+			</choose>
+			course.auth=2 and course.flag=1 and course.liveflag=2 and course.entkbn=0 order by course.createtime desc limit #{start}, #{offset}
+	</select>
+	
+	<!-- 直播节目单列表 -->
+	<select id="findWeekLiveCourse" parameterType="map" resultType="liveCourse">
+		select 
+			course.courseid,  course.coursename, course.liveflag, 
+			tea.realname, DATE_FORMAT(notice.starttime,'%H:%i') starttime_fmt, DATE_FORMAT(notice.endtime,'%H:%i') endtime_fmt
+		from 
+			t_course course, t_userinfo tea, t_course_live_notice notice
+		where 
+			course.userid=tea.userid and course.courseid=notice.courseid and
+			<choose>
+				<when test="teacherid != null">
+					<!-- 直播间内节目单列表 -->
+					course.userid=#{teacherid} and
+					notice.starttime between DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') and DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') and
+					(course.coursekind=1 or course.coursekind=2) and 
+				</when>
+				<otherwise>
+					<!-- 本周某天直播节目单列表 -->
+					<bind name="starttime_" value="date + ' 00:00:00'"/>
+					<bind name="endtime_" value="date + ' 23:59:59'"/>
+					notice.starttime between #{starttime_} and #{endtime_} and
+					course.coursekind=#{type} and 
+				</otherwise>
+			</choose>
+			course.auth=2 and course.flag=1 and 
+			course.entkbn=0 order by notice.starttime asc
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

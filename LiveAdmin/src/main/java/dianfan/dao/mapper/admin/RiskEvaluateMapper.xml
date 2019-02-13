@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.RiskEvaluateMapper">
+	
+	<!-- 风险测评列表 -->
+	<select id="riskEvaluateList" parameterType="map" resultType="EvaluateList" >
+		select
+			class.id,
+			class.classname classname,
+			question.id questionid,
+			question.questionname questionname,
+			answer.id answerid,
+			answer.answername answername,
+			answer.score score
+		from
+			t_evaluate_class class,
+			t_evaluate_question question,
+			t_evaluate_answer answer
+		where
+			class.id = question.classid and
+			question.id = answer.questionid
+		order by
+			class.classname,
+			question.questionname,
+			answer.answername
+		limit 
+			#{start},#{length}
+	</select>
+
+
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

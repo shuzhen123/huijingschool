@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.CourseCommontMapper">
+	<!-- 根据课程id获取评论总条数 -->
+	<select id="getCourseCommontCountById" parameterType="string" resultType="int">
+		select 
+			count(*) 
+		from 
+			t_course_comment commonts, t_userinfo user
+		where 
+			commonts.courseid = #{courseid} and 
+			commonts.userid = user.userid and 
+			commonts.entkbn = 0 and user.entkbn = 0
+	</select>
+	<!-- 根据课程id获取评论列表 -->
+	<select id="findCourseCommontById" parameterType="map" resultType="courseCommont">
+		select 
+			commonts.id, commonts.userid, commonts.courseid, commonts.commentcontent, commonts.coursescore, commonts.createtime,
+			user.telno, user.nickname
+		from
+			t_course_comment commonts, t_userinfo user
+		where
+			commonts.courseid = #{courseid} and 
+			commonts.userid = user.userid and 
+			commonts.entkbn = 0 and user.entkbn = 0
+			order by commonts.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

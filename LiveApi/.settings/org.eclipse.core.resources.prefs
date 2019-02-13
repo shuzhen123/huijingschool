@@ -1,0 +1,12 @@
+eclipse.preferences.version=1
+encoding//src/main/java=UTF-8
+encoding//src/main/resources=UTF-8
+encoding//src/main/resources/config.properties=UTF-8
+encoding//src/main/resources/db.properties=UTF-8
+encoding//src/main/resources/hexun.properties=UTF-8
+encoding//src/main/resources/hexun1.properties=UTF-8
+encoding//src/main/resources/sms.properties=UTF-8
+encoding//src/main/resources/vcloud.properties=UTF-8
+encoding//src/main/resources/yunpian.properties=UTF-8
+encoding//src/test/java=UTF-8
+encoding/<project>=UTF-8

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.AgentMapper">
+
+	<!-- 根据条件查询代理商总条数 -->
+	<select id="findAgentCount" parameterType="map" resultType="int">
+		select 
+			count(*) 
+		from 
+			t_userinfo 
+		where
+			<if test="username != null and username != ''">
+				<bind name="username_" value="username + '%'" />
+				username like #{username_} and 
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'" />
+				realname like #{realname_} and 
+			</if>
+			<if test="phone != null and phone != ''">
+				<bind name="phone_" value="phone + '%'" />
+				telno like #{phone_} and 
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				registertime between #{_starttime} and #{endtime_} and
+			</if>
+			role = 4 and entkbn != 9
+	</select>
+	
+	<!-- 根据条件查询代理商数据 -->
+	<select id="findAgentInfo" parameterType="map" resultType="userInfo">
+		select * from t_userinfo
+		where
+			<if test="username != null and username != ''">
+				<bind name="username_" value="username + '%'" />
+				username like #{username_} and 
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'" />
+				realname like #{realname_} and 
+			</if>
+			<if test="phone != null and phone != ''">
+				<bind name="phone_" value="phone + '%'" />
+				telno like #{phone_} and 
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				registertime between #{_starttime} and #{endtime_} and
+			</if>
+			role = 4 and entkbn != 9 order by registertime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 讲师推荐设置 -->
+	<update id="changeCommend" parameterType="map">
+		update t_userinfo set
+			<if test="famousteacherflag != null">
+				famousteacherflag = #{famousteacherflag}
+			</if>
+			<if test="trecflag != null">
+				trecflag=#{trecflag}
+			</if>
+		where userid=#{teacherid}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

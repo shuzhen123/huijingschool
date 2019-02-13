@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.mp.MpIndexMapper">
+
+    <!-- 一对多 -->
+    <resultMap type="indexCourseBean" id="typeCourses">
+    	<id column="id" property="kindid"/>
+    	<result column="coursetypename" property="coursetypename"/>
+        <collection property="courses" ofType="appRecommendCourse">
+            <id column="courseid" property="courseid"/>
+            <result column="coursename" property="coursename"/>
+            <result column="coursepic" property="coursepic"/>
+            <result column="coursemoney" property="coursemoney"/>
+            <result column="type" property="type"/>
+            <result column="browsingcount" property="study_count"/>
+        </collection>     
+    </resultMap>
+    
+	<!-- 首页课程分类推荐列表 -->
+	<select id="findCourseListByType" resultMap="typeCourses">
+		select 
+			kind.id, kind.coursetypename, course.courseid, course.coursename, course.coursepic, 
+			course.coursemoney, course.courselimit type, course.browsingcount
+		from 
+			t_coursekind kind, t_course course
+		where 
+			kind.id=course.coursetypecode and kind.entkbn=0 and 
+			course.recommendflag=1 and course.auth=2 and course.flag=1 and course.entkbn=0
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

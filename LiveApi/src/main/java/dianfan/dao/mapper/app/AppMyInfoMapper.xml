@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppMyInfoMapper">
+	<!-- 我的代金券、体验券列表 -->
+	<select id="myCouponList" parameterType="map" resultType="coupon">
+		select 
+			ccre.id, caco.cpname, caco.type, caco.price, caco.servicedays, caco.validity, 
+			ccre.expire
+		from 
+			t_ccrelation ccre, t_cashcoupon caco
+		where 
+			ccre.cashid=caco.id and ccre.userid=#{userid} and caco.type=#{type} and ccre.useflag!=9 and ccre.expire > now() and caco.entkbn = 0
+	</select>
+	
+	<!-- 根据条件获取我购买的课程总数 -->
+	<select id="getMyCourseCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_course course
+		where 
+			course.courseid in (
+				select  
+					DISTINCT courseid
+				from 
+					t_course_orders_relation
+				where 
+					orderid in (
+						select 
+							orderno
+						from 
+							t_courseorders
+						where 
+							userid=#{userid} and paystatus=1 and validitytime > now()
+					)
+			) and course.coursekind=#{type} and course.entkbn=0 and course.flag=1
+	</select>
+	
+	<!-- 根据条件获取我购买的课程数据 -->
+	<select id="getMyCourseList" parameterType="map" resultType="courseList">
+		select 
+			course.courseid, course.coursename, course.coursemoney, course.thumbsupcount, course.browsingcount, course.coursepic, if(thum.couseid is null,'n','y')  praise
+		from 
+			t_course course left join (
+				select couseid from t_course_thumbsup where userid=#{userid} and entkbn=0
+			)thum on course.courseid=thum.couseid
+		where 
+			course.courseid in (
+				select  
+					DISTINCT courseid
+				from 
+					t_course_orders_relation
+				where 
+					orderid in (
+						select 
+							orderno
+						from 
+							t_courseorders
+						where 
+							userid=#{userid} and paystatus=1 and validitytime > now()
+					)
+			) and course.coursekind=#{type} and course.entkbn=0 and course.flag=1 limit #{start}, #{offset}
+	</select>
+	
+	<!-- 获取我的课程学习总数量 -->
+	<select id="getMyCourseStudyCount" parameterType="string" resultType="int">
+		select 
+			count(*)
+		from 
+			t_studyprogress sp , t_course cour
+		where 
+			sp.courseid=cour.courseid and sp.studyuserid=#{userid} and 
+			cour.auth=2 and cour.flag=1 and cour.entkbn=0
+	</select>
+	
+	<!-- 获取我的课程学习数据 -->
+	<select id="getMyCourseStudyList" parameterType="map" resultType="courseSutdy">
+		select 
+			sp.courseid, cour.coursepic, cour.coursename, cour.coursekind, sp.time studytime
+		from 
+			t_studyprogress sp , t_course cour
+		where 
+			sp.courseid=cour.courseid and sp.studyuserid=#{userid} and 
+			cour.auth=2 and cour.flag=1 and cour.entkbn=0 order by sp.time desc limit #{start}, #{offset}
+	</select>
+	
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

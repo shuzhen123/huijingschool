@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.VipANewsMapper">
+	<!-- 根据条件查找咨讯总条数  -->
+	<select id="findNewsCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_vipstrategy vn, t_userinfo info, t_viplevel kind
+		where 
+			vn.userid = info.userid and vn.entkbn = 0 and info.entkbn = 0
+			and vn.kind=kind.id and kind.entkbn = 0
+			<if test="showflag ==0 or showflag == 1">
+				and vn.showflag = #{showflag}
+			</if>
+			<if test="articaltitle != null and articaltitle != ''">
+				<bind name="_articaltitle_" value="'%' + articaltitle + '%'" />
+				and vn.articaltitle like #{_articaltitle_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and vn.tdays between #{_starttime} and #{endtime_}
+			</if>
+			<if test="checkflag ==0 or checkflag == 1">
+				and vn.checkflag = #{checkflag}
+			</if>
+			<if test="kind != null and kind != ''">
+				and vn.kind = #{kind}
+			</if>
+	</select>
+	
+	<!-- 根据条件查找咨讯列表  -->
+	<select id="findNews" parameterType="map" resultType="vipInfomation">
+		select
+			vn.articalid, vn.userid, vn.tdays, vn.kind, vn.articaltitle, vn.picurl, vn.content, vn.readcount, vn.showflag, vn.checkflag, vn.cause,
+			info.realname, kind.levelname kindname
+		from 
+			t_vipstrategy vn, t_userinfo info, t_viplevel kind
+		where 
+			vn.userid = info.userid and vn.entkbn = 0 and info.entkbn = 0
+			and vn.kind=kind.id and kind.entkbn = 0
+			<if test="showflag ==0 or showflag == 1">
+				and vn.showflag = #{showflag}
+			</if>
+			<if test="articaltitle != null and articaltitle != ''">
+				<bind name="_articaltitle_" value="'%' + articaltitle + '%'" />
+				and vn.articaltitle like #{_articaltitle_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and vn.tdays between #{_starttime} and #{endtime_}
+			</if>
+			<if test="checkflag ==0 or checkflag == 1">
+				and vn.checkflag = #{checkflag}
+			</if>
+			<if test="kind != null and kind != ''">
+				and vn.kind = #{kind}
+			</if>
+			 order by vn.tdays desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 修改咨讯数据 -->
+	<update id="checkVipNews" parameterType="map">
+		update t_vipstrategy set 
+			checkflag = #{checkflag}
+			<if test="checkflag == 0">
+				, cause = #{cause}
+			</if>
+		where articalid = #{id}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

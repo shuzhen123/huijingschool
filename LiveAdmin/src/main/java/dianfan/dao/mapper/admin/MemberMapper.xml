@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.MemberMapper">
+	<!-- 根据条件查询用户列表 -->
+	<select id="findUsers" parameterType="map" resultType="userInfo">
+		select 
+			memb.userid, memb.telno, memb.iconurl, memb.nickname, memb.realname, memb.sex, memb.prov, memb.riskratingfalg, memb.registertime, 
+			agent.realname agentname,
+			class.allcontent remark, class.name levelname
+		from 
+			t_userinfo memb left join (
+				select 
+					rel.customerid, rel.allcontent, class.name
+				from 
+					t_csclassify_customer_related rel left join t_csclassify class on rel.csclassifyid=class.id
+				where 
+					rel.entkbn=0
+			)class on memb.userid=class.customerid, t_customer cus, t_userinfo agent
+		where 
+			memb.userid=cus.userid and cus.dtagentuserid=agent.userid and memb.entkbn!=9 and memb.role=1
+			<if test="nickname != null and nickname != ''">
+				<bind name="nickname_" value="nickname + '%'" />
+				and memb.nickname like #{nickname_}
+			</if>
+			<if test="phone != null and phone != ''">
+				<bind name="phone_" value="phone + '%'" />
+				and memb.telno like #{phone_}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and memb.registertime between #{_starttime} and #{endtime_}
+			</if>
+			order by memb.registertime desc limit #{start}, #{length}
+	</select>
+	
+	<!-- 删除用户分类 -->
+	<delete id="delClassify" parameterType="list">
+		delete from t_csclassify where id in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</delete>
+	
+	<!-- 修改分类下的客户类型 -->
+	<update id="changeUserClassify" parameterType="list">
+		update t_csclassify_customer_related set csclassifyid=null where csclassifyid in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</update>
+	
+	
+	
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

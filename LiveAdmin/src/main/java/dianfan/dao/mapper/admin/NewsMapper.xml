@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.NewsMapper">
+	<!-- 根据条件获取咨讯模块数据 -->
+	<select id="findNewsModel" parameterType="map" resultType="newsModel">
+		select * from t_informationmodule where entkbn=0 
+		<if test="length > 0">
+			limit #{start}, #{length}
+		</if>
+	</select>
+	
+	<!-- 批量删除模块 -->
+	<update id="delNewsModelByIds" parameterType="list">
+		update t_informationmodule set entkbn = 9 where informationid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</update>
+	
+	<!-- 根据条件查找模块条数 -->
+	<select id="findCountByName" parameterType="map" resultType="int">
+		select 
+			count(*) 
+		from 
+			t_informationmodule 
+		where 
+			<if test="id != null and id != ''">
+				informationid != #{id} and
+			</if>
+			newskindname = #{modelname} and entkbn=0
+	</select>
+	
+	<!-- 根据条件查找咨讯总条数  -->
+	<select id="findNewsCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_informationmodule model, t_infomation info 
+			left join t_userinfo user on info.userid=user.userid
+		where 
+			info.informationmodelid=model.informationid and
+			<if test="informationmodelid != null and informationmodelid != ''">
+				<!-- 模块类型 -->
+				info.informationmodelid = #{informationmodelid} and
+			</if>
+			<if test="realname != null and realname != ''">
+				<!-- 讲师名称 -->
+				<bind name="realname_" value="realname + '%'" />
+				user.realname like #{realname_} and
+			</if>
+			<if test="infomationtitle != null and infomationtitle != ''">
+				<!-- 标题 -->
+				<bind name="_infomationtitle_" value="'%'+ infomationtitle + '%'" />
+				info.infomationtitle like #{_infomationtitle_} and
+			</if>
+			<if test="tag != null">
+				<!-- 标签 -->
+				<if test="tag == ''">
+					info.tag is null and
+				</if>
+				<if test="tag != ''">
+					<bind name="_tag_" value="'%'+ tag + '%'" />
+					info.tag like #{_tag_} and
+				</if>
+			</if>
+			<if test="singname != null">
+				<!-- 作者 -->
+				<if test="singname == ''">
+					info.singname is null and
+				</if>
+				<if test="singname != ''">
+					<bind name="singname_" value="singname + '%'" />
+					info.singname like #{singname} and
+				</if>
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				info.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			info.entkbn=0 and model.entkbn=0
+	</select>
+	<!-- 根据条件查找咨讯列表  -->
+	<select id="findNews" parameterType="map" resultType="infomation">
+		select 
+			info.id, model.newskindname, user.userid, user.realname, info.infomationtitle,
+			info.content, info.picurl, info.descrption, info.tag, info.singname, 
+			info.readcounts, info.thumbsupcounts, info.createtime
+		from 
+			t_informationmodule model, t_infomation info
+			left join t_userinfo user on info.userid=user.userid
+		where
+			info.informationmodelid=model.informationid and
+			<if test="informationmodelid != null and informationmodelid != ''">
+				<!-- 模块类型 -->
+				info.informationmodelid = #{informationmodelid} and
+			</if>
+			<if test="realname != null and realname != ''">
+				<!-- 讲师名称 -->
+				<bind name="realname_" value="realname + '%'" />
+				user.realname like #{realname_} and
+			</if>
+			<if test="infomationtitle != null and infomationtitle != ''">
+				<!-- 标题 -->
+				<bind name="_infomationtitle_" value="'%'+ infomationtitle + '%'" />
+				info.infomationtitle like #{_infomationtitle_} and
+			</if>
+			<if test="tag != null">
+				<!-- 标签 -->
+				<if test="tag == ''">
+					info.tag is null and
+				</if>
+				<if test="tag != ''">
+					<bind name="_tag_" value="'%'+ tag + '%'" />
+					info.tag like #{_tag_} and
+				</if>
+			</if>
+			<if test="singname != null">
+				<!-- 作者 -->
+				<if test="singname == ''">
+					info.singname is null and
+				</if>
+				<if test="singname != ''">
+					<bind name="singname_" value="singname + '%'" />
+					info.singname like #{singname} and
+				</if>
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				info.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			info.entkbn=0 and model.entkbn=0 order by info.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 添加咨讯数据 -->
+	<insert id="addNewsInfo" parameterType="infomation">
+		insert into t_infomation 
+			(	id, informationmodelid,
+				<if test="userid != null and userid != ''">userid,</if>
+				infomationtitle,
+				<if test="picurl != null and picurl != ''">picurl,</if>
+				content,
+				<if test="descrption != null and descrption != ''">descrption,</if>
+				<if test="tag != null and tag != ''">tag,</if>
+				<if test="singname != null and singname != ''">singname,</if>
+				readcounts, thumbsupcounts, createtime, 
+				<if test="createid != null and createid != ''">createid,</if>
+				entkbn
+			)
+		values
+			(
+				#{id}, #{informationmodelid},
+				<if test="userid != null and userid != ''">#{userid},</if>
+				#{infomationtitle},
+				<if test="picurl != null and picurl != ''">#{picurl},</if>
+				#{content},
+				<if test="descrption != null and descrption != ''">#{descrption},</if>
+				<if test="tag != null and tag != ''">#{tag},</if>
+				<if test="singname != null and singname != ''">#{singname},</if>
+				0, 0, now(), 
+				<if test="createid != null and createid != ''">#{createid},</if>
+				0
+			)
+	</insert>
+	
+	<!-- 根据id删除咨讯数据 -->
+	<update id="delNewsByIds" parameterType="list">
+		update t_infomation set entkbn = 9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 根据讲师id获取代理商id -->
+	<select id="findTeachersByTid" parameterType="string" resultType="bashMap">
+		select
+			info.userid id, info.realname name
+		from
+			(
+				select 
+					teac.teacherid 
+				from
+					t_agent_teac teac, t_agent_teac age
+				where 
+					teac.agentid=age.agentid and age.teacherid=#{teacherid}
+			)teas, t_userinfo info
+		where
+			teas.teacherid=info.userid
+	</select>
+	
+	<!-- 修改咨讯数据 -->
+	<update id="editNewsInfo" parameterType="infomation">
+		update t_infomation set 
+			infomationtitle = #{infomationtitle}, informationmodelid = #{informationmodelid},
+			userid = #{userid}, singname = #{singname}, tag = #{tag}, descrption = #{descrption},
+			<if test="picurl != null and picurl != ''">picurl = #{picurl},</if>
+			content = #{content}
+		where id = #{id}
+	</update>
+	
+	<!-- 根据条件获取观点数量 -->
+	<select id="findViewpointCount" parameterType="map" resultType="int">
+		select count(*) from t_infomation
+		where
+			<choose>
+				<when test="infomationtitle != null and infomationtitle != ''">
+					<bind name="_infomationtitle_" value="'%' + infomationtitle + '%'" />
+					infomationtitle like #{_infomationtitle_} and
+				</when>
+				<when test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+					<bind name="_starttime" value="starttime + ' 00:00:00'" />
+					<bind name="endtime_" value="endtime + ' 23:59:59'" />
+					createtime between #{_starttime} and #{endtime_} and
+				</when>
+			</choose>
+			informationmodelid='-1' and entkbn=0 order by createtime desc
+	</select>
+	<!-- 根据条件获取观点数据 -->
+	<select id="findViewpoint" parameterType="map" resultType="infomation">
+		select *
+		from t_infomation
+		where 
+			<choose>
+				<when test="infomationtitle != null and infomationtitle != ''">
+					<bind name="_infomationtitle_" value="'%' + infomationtitle + '%'" />
+					infomationtitle like #{_infomationtitle_} and
+				</when>
+				<when test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+					<bind name="_starttime" value="starttime + ' 00:00:00'" />
+					<bind name="endtime_" value="endtime + ' 23:59:59'" />
+					createtime between #{_starttime} and #{endtime_} and
+				</when>
+			</choose>
+			informationmodelid='-1' and entkbn=0 order by createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

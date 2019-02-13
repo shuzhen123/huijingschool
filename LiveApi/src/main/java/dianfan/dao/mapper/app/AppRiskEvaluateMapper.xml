@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppRiskEvaluateMapper">
+	
+	<!-- 风险评测resultMap -->
+	<resultMap type="evaluateClass" id="riskEvaluateQuestion">
+		<!-- 题目大类 -->
+		<id column="id" property="classid"/>
+		<result column="classname" property="classname"/>
+		
+			<!-- 评测问题 -->
+			<collection property="question" ofType="evaluateQuestion">
+				<id column="question_id" property="questionid"/>
+				<result column="questionname" property="questionname"/>
+				
+				<!-- 题目答案 -->
+				<collection property="answer" ofType="evaluateAnswer">
+					<id column="answer_id" property="answerid"/>
+					<result column="answername" property="answername"/>
+				</collection>
+			</collection>
+			
+	</resultMap>
+	
+	<!-- 获取风险评测列表 -->
+	<select id="getRiskEvaluateQuestion" resultMap="riskEvaluateQuestion">
+		select
+			class.id,
+			class.classname,
+			question.id question_id,
+			question.questionname,
+			answer.id answer_id,
+			answer.answername
+		from
+			t_evaluate_class class,
+			t_evaluate_question question,
+			t_evaluate_answer answer
+		where
+			class.id = question.classid and
+			question.id = answer.questionid
+		order by
+			class.id,
+			question.id asc,
+			answer.id asc
+	</select>
+	
+	<!-- 用户答案列表 -->
+	<select id="userEvaluateList" parameterType="list" resultType="evaluateAnswer">
+		select
+		 id answerid,
+		 answername,
+		 score
+		from
+			t_evaluate_answer
+		where
+			id in <foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</select>
+
+	<!-- 将用户的风险评测的分数持久化 -->
+	<insert id="saveEvaluateScore" parameterType="map">
+		insert into t_evaluate_user_answer 
+			(
+				id, 
+				userid, 
+				answerid, 
+				score, 
+				createtime
+			) 
+		values
+			<foreach item="item" index="index" collection="answer" separator="," >
+				(replace(UUID(),'-',''), 
+				#{userid}, 
+				#{item.answerid}, 
+				#{item.score}, 
+				now())
+			</foreach>
+	</insert>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

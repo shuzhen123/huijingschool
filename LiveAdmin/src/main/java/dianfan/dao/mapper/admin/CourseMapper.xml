@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.CourseMapper">
+	<!-- 根据条件获取总条数 -->
+	<select id="findCourseCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from
+			t_course course, t_userinfo tea, t_coursekind kind
+		where
+			course.userid=tea.userid and course.coursetypecode=kind.id
+			<if test="agentname != null and agentname != ''">
+				<!-- 代理商名称搜索 -->
+				<bind name="agentname_" value="agentname + '%'" />
+				and course.userid in(
+					select teacherid from t_agent_teac where agentid in (
+						select userid from t_userinfo where realname like #{agentname_}
+					)
+				)
+			</if>
+			<if test="realname != null and realname != ''">
+				<!-- 教师名称搜索 -->
+				<bind name="realname_" value="realname + '%'" />
+				and tea.realname like #{realname_}
+			</if>
+			<if test="coursename != null and coursename != ''">
+				<!-- 课程名称搜索 -->
+				<bind name="coursename_" value="coursename + '%'" />
+				and course.coursename like #{coursename_}
+			</if>
+			<choose>
+				<when test="coursetype == 3 or coursetype == 4">
+					<!-- 课程类型搜索 -->
+					and course.coursekind=#{coursetype}
+				</when>
+				<otherwise>and (course.coursekind=3 or course.coursekind=4)</otherwise>
+			</choose>
+			<if test="courseclass != null and courseclass != ''">
+				<!-- 课程分类搜索 -->
+				and course.coursetypecode=#{courseclass}
+			</if>
+			<if test="recommend == 0 or recommend == 1">
+				<!-- 推荐分类搜索 -->
+				and course.recommendflag=#{recommend}
+			</if>
+			<if test="check != null and check != ''">
+				<!-- 推荐分类搜索 -->
+				and course.auth=#{check}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<!-- 使用时间搜索 -->
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and course.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and course.entkbn = 0 and tea.entkbn!=9 and kind.entkbn=0
+	</select>
+	
+	<!-- 根据条件获取课程列表 -->
+	<select id="findCourses" parameterType="map" resultType="course">
+		select
+			c.*, agent.realname agentname
+		from 
+			(
+				select 
+					course.courseid, course.userid, user.realname, course.coursename, course.courselimit, course.coursemoney, course.coursekind, 
+					course.coursetypecode, kind.coursetypename, course.recommendflag, course.flag, course.auth, course.createtime
+				from
+					t_course course, t_userinfo user, t_coursekind kind 
+				<where>
+					<if test="agentname != null and agentname != ''">
+						<!-- 代理商名称搜索 -->
+						<bind name="agentname_" value="agentname + '%'" />
+						and course.userid in(
+							select teacherid from t_agent_teac where agentid in (
+								select userid from t_userinfo where realname like #{agentname_}
+							)
+						)
+					</if>
+					<if test="realname != null and realname != ''">
+						<!-- 教师名称搜索 -->
+						<bind name="realname_" value="realname + '%'" />
+						and user.realname like #{realname_}
+					</if>
+					<if test="coursename != null and coursename != ''">
+						<!-- 课程名称搜索 -->
+						<bind name="coursename_" value="coursename + '%'" />
+						and course.coursename like #{coursename_}
+					</if>
+					<choose>
+						<when test="coursetype == 3 or coursetype == 4">
+							<!-- 课程类型搜索 -->
+							and course.coursekind=#{coursetype}
+						</when>
+						<otherwise>and (course.coursekind=3 or course.coursekind=4)</otherwise>
+					</choose>
+					<if test="courseclass != null and courseclass != ''">
+						<!-- 课程分类搜索 -->
+						and course.coursetypecode=#{courseclass}
+					</if>
+					<if test="recommend == 0 or recommend == 1">
+						<!-- 推荐分类搜索 -->
+						and course.recommendflag=#{recommend}
+					</if>
+					<if test="check != null and check != ''">
+						<!-- 推荐分类搜索 -->
+						and course.auth=#{check}
+					</if>
+					<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+						<!-- 使用时间搜索 -->
+						<bind name="_starttime" value="starttime + ' 00:00:00'" />
+						<bind name="endtime_" value="endtime + ' 23:59:59'" />
+						and course.createtime between #{_starttime} and #{endtime_}
+					</if>
+					and course.userid = user.userid and course.coursetypecode=kind.id and course.entkbn = 0 
+					<if test="length > 0">
+						limit #{start}, #{length}
+					</if>
+				</where>
+			) c, t_agent_teac tau, t_userinfo agent
+			where 
+				c.userid=tau.teacherid and tau.agentid=agent.userid order by c.createtime desc
+	</select>
+	
+	<!-- 根据课程id获取课程信息 -->
+	<select id="findCourseInfoById" parameterType="string" resultType="course">
+		select
+			course.courseid, course.userid, course.recommendflag, course.recommendindex, course.coursekind, course.coursetypecode, 
+			course.coursename, course.coursemoney, course.discountrate, course.coursepic, course.coursedes, 
+			course.courselimit, course.auth, course.bannerflag, course.thumbsupcount, course.flag, course.createtime,
+			user.realname,
+			kind.coursetypename
+		from 
+			t_course course, t_userinfo user, t_coursekind kind 
+		where 
+			course.userid = user.userid and 
+			course.coursetypecode=kind.id and 
+			course.courseid=#{courseid} and 
+			course.entkbn = 0
+			limit 0, 1
+	</select>
+	
+	<!-- 课程修改 -->
+	<update id="editCourse" parameterType="course">
+		update t_course set
+			coursename = #{coursename},
+			coursetypecode = #{coursetypecode},
+			coursekind = #{coursekind},
+			courselimit = #{courselimit},
+			<if test="courselimit == 2">coursemoney = #{coursemoney},</if>
+			<if test="recommendflag != null">recommendflag = #{recommendflag},</if>
+			<if test="bannerflag != null">bannerflag = #{bannerflag},</if>
+			<if test="flag != null">flag = #{flag},</if>
+			<if test="coursepic != null and coursepic != ''">
+				coursepic = #{coursepic},
+			</if>
+			<if test="auth != null and auth != ''">
+				auth = #{auth},
+			</if>
+			coursedes = #{coursedes}
+		where courseid = #{courseid}
+	</update>
+	
+	<!-- 根据课程id删除课程 -->
+	<update id="delCourseByIds" parameterType="list">
+		update t_course set entkbn = 9 where courseid in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 根据id删除课程类型 -->
+	<update id="delCourseType" parameterType="list">
+		update t_coursekind set entkbn = 9 where id in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 删除课程类型下的所有课程 -->
+	<update id="delCourseByType" parameterType="list">
+		update t_course set entkbn = 9 where coursetypecode in 
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

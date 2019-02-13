@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.teacher.TeaCourseMapper">
+	<!-- 根据条件获取总条数 -->
+	<select id="findCourseCount" parameterType="map" resultType="int">
+		select count(*) from t_course where
+		<if test="coursename != null and coursename != ''">
+			<bind name="_coursename_" value="'%' + coursename + '%'" />
+			coursename like #{_coursename_} and
+		</if>
+		<choose>
+			<when test="coursekind != null and coursekind != ''">coursekind=#{coursekind} and</when>
+			<otherwise>(coursekind = 3 or coursekind = 4) and </otherwise>
+		</choose>
+		<if test="coursetypecode != null and coursetypecode != ''">
+			coursetypecode = #{coursetypecode} and
+		</if>
+		<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+			<bind name="_starttime" value="starttime + ' 00:00:00'" />
+			<bind name="endtime_" value="endtime + ' 23:59:59'" />
+			createtime between #{_starttime} and #{endtime_} and
+		</if>
+		userid = #{teacherid} and entkbn = 0
+	</select>
+
+	<!-- 根据条件获取课程列表 -->
+	<select id="findCourses" parameterType="map" resultType="course">
+		select
+			course.courseid, course.userid, course.recommendflag, course.recommendindex, course.coursekind,
+			course.coursetypecode, course.coursename, course.coursemoney, course.discountrate, course.coursedes, 
+			course.courselimit, course.auth, course.cause, course.bannerflag, course.flag, course.thumbsupcount,
+			course.createtime,
+			kind.coursetypename
+		from
+			t_course course left join t_coursekind kind on course.coursetypecode = kind.id
+		where
+			<if test="coursename != null and coursename != ''">
+				<bind name="_coursename_" value="'%' + coursename + '%'" />
+				course.coursename like #{_coursename_} and
+			</if>
+			<choose>
+				<when test="coursekind != null and coursekind != ''">course.coursekind=#{coursekind} and</when>
+				<otherwise>(course.coursekind = 3 or course.coursekind = 4) and </otherwise>
+			</choose>
+			<if test="coursetypecode != null and coursetypecode != ''">
+				course.coursetypecode = #{coursetypecode} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				course.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			course.userid = #{teacherid} and course.entkbn = 0 order by course.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+
+	<!-- 根据课程id获取课程信息 -->
+	<select id="findCourseInfoById" parameterType="string" resultType="course">
+		select
+			course.courseid, course.userid, course.recommendflag, course.recommendindex,
+			course.coursekind, course.coursetypecode,
+			course.coursename, course.coursemoney, course.coursepic,
+			course.coursedes,
+			course.courselimit, course.auth, course.cause, course.bannerflag, course.thumbsupcount, course.flag,
+			course.createtime,
+			kind.coursetypename
+		from
+			t_course course, t_coursekind kind
+		where
+			course.coursetypecode=kind.id and course.courseid=#{courseid}
+	</select>
+
+	<!-- 课程修改 -->
+	<update id="editCourse" parameterType="course">
+		update t_course set
+			coursename = #{coursename},
+			coursetypecode = #{coursetypecode},
+			coursekind = #{coursekind},
+			courselimit = #{courselimit},
+			coursemoney = #{coursemoney},
+			flag = #{flag},
+			coursedes = #{coursedes}
+			<if test="coursepic != null and coursepic != ''">
+				,coursepic = #{coursepic}
+			</if>
+			<if test="auth != null and auth != ''">
+				,auth = #{auth}
+			</if>
+		where courseid = #{courseid}
+	</update>
+
+	<!-- 课程添加 -->
+	<insert id="addCourse" parameterType="course">
+		insert into t_course
+			(courseid, userid, recommendflag, coursetypecode, coursekind, coursename, coursepic, coursedes,
+			courselimit, coursemoney, auth, bannerflag, thumbsupcount, flag, createtime, entkbn)
+		values
+			(#{courseid}, #{userid}, 0, #{coursetypecode}, #{coursekind}, #{coursename}, #{coursepic}, #{coursedes},
+			#{courselimit}, #{coursemoney}, 1, 0, 0, #{flag}, now(), 0)
+	</insert>
+
+	<!-- 添加课程视频 -->
+	<insert id="addCourseVideo" parameterType="video">
+		insert into t_videos
+		(
+			videoid, courseid, videoppicurl, videoname,
+			<if test="videointroduce != null and videointroduce != ''">videointroduce,</if>
+			<if test="videocontent != null and videocontent != ''">videocontent,</if>
+			userid, enableflag, createtime, createid, entkbn
+		)
+		values
+		(
+			#{videoid}, #{courseid}, #{videoppicurl}, #{videoname},
+			<if test="videointroduce != null and videointroduce != ''">#{videointroduce},</if>
+			<if test="videocontent != null and videocontent != ''">#{videocontent},</if>
+			#{userid}, #{enableflag}, now(), #{createid}, 1
+		)
+	</insert>
+
+	<!-- 修改课程视频 -->
+	<update id="editCourseVideo" parameterType="video">
+		update t_videos set
+			<if test="videoppicurl != null and videoppicurl != ''">videoppicurl = #{videoppicurl},</if>
+			videoname = #{videoname}, videointroduce = #{videointroduce},
+			videocontent = #{videocontent}, enableflag = #{enableflag}
+		where
+			videoid = #{videoid}
+	</update>
+
+	<!-- 根据id删除课程视频 -->
+	<update id="delCourseVideoByIds" parameterType="list">
+		update t_videos set entkbn = 9 where videoid in
+		<foreach item="item" index="index" collection="list" open="("
+			separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 获取视频转码状态 -->
+	<select id="videoTranscodeStatus" parameterType="list" resultType="Video">
+		select videoid, videourl, entkbn from t_videos where videoid in
+		<foreach item="item" index="index" collection="array" open="(" separator="," close=")">#{item}</foreach>
+	</select>
+	
+	<!-- ************************课程评价************************ -->
+	
+	<!-- 根据课程id获取评论总条数 -->
+	<select id="getCourseCommontCountById" parameterType="string" resultType="int">
+		select 
+			count(*) 
+		from 
+			t_course_comment commonts, t_userinfo user
+		where 
+			commonts.courseid = #{courseid} and 
+			commonts.userid = user.userid and 
+			commonts.entkbn = 0 and user.entkbn = 0
+	</select>
+	<!-- 根据课程id获取评论列表 -->
+	<select id="findCourseCommontById" parameterType="map" resultType="courseCommont">
+		select 
+			commonts.id, commonts.userid, commonts.courseid, commonts.commentcontent, commonts.coursescore, commonts.createtime,
+			user.telno, user.nickname
+		from
+			t_course_comment commonts, t_userinfo user
+		where
+			commonts.courseid = #{courseid} and 
+			commonts.userid = user.userid and 
+			commonts.entkbn = 0 and user.entkbn = 0
+			order by commonts.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppNewsMapper">
+	<!-- 根据咨讯模块id获取咨讯列表 -->
+	<select id="findNewsListByInfoid" parameterType="map" resultType="infomation">
+		select 
+			info.id, info.infomationtitle, info.picurl, info.createtime, IFNULL(comm.count,0) readcounts
+		from 
+			t_infomation info left join
+			(
+				select 
+					infomationid, count(infomationid) count
+				from t_comments where infomationid in(
+					select * from (
+						select id from t_infomation info where informationmodelid=#{infoid} and entkbn = 0 limit #{page}, #{offset}
+					) id
+				) and entkbn = 0 group by infomationid
+			) comm on info.id=comm.infomationid where info.informationmodelid=#{infoid} and info.entkbn = 0 order by info.createtime desc
+	</select>
+	
+	<!-- 根据咨讯id获取咨讯列表 -->
+	<select id="findNewsCommentByInfoid" parameterType="map" resultType="newsComment">
+		select 
+			comm.commentid, comm.infomationid, comm.commentuserid, comm.commentcontent, comm.createtime, info.iconurl, info.nickname
+		from 
+			t_comments comm, t_userinfo info
+		where 
+			comm.commentuserid=info.userid and comm.infomationid=#{infoid} and comm.entkbn=0 
+			order by comm.createtime desc limit #{page}, #{offset}
+	</select>
+	
+	<!-- 根据条件获取vip咨讯数量 -->
+	<select id="getVipNewsCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from 
+			t_vipstrategy
+		where
+			<if test="userid != 'inner_staff'">
+				kind in (
+					select 
+						distinct viplevelid 
+					from 
+						t_user_viplevel_time
+					where 
+						userid=#{userid}
+				) and 
+			</if>
+			showflag=1 and checkflag=1 and entkbn=0
+	</select>
+	
+	<!-- 获取vip策略列表 -->
+	<select id="findVipNews" parameterType="map" resultType="vipInfomation">
+		select 
+			str.*, comm.counts readcount
+		from 
+			(
+				select 
+					articalid, tdays, articaltitle, picurl, createtime
+				from 
+					t_vipstrategy
+				where
+					<if test="userid != 'inner_staff'">
+						kind in (
+							<!-- select 
+								DISTINCT viplevelid 
+							from 
+								t_user_viplevel_time
+							where 
+								userid=#{userid} -->
+							select id from t_viplevel where money &lt;= (
+								select max(money) from t_viplevel where id=(
+									select 
+										DISTINCT viplevelid 
+									from 
+										t_user_viplevel_time
+									where 
+										userid=#{userid}
+								)
+							)
+						) and 
+					</if>
+					showflag=1 and checkflag=1 and entkbn=0 order by createtime desc
+					limit #{start}, #{offset}
+			) str left join (
+				select 
+					infomationid, count(*) counts
+				from 
+					t_comments
+				where 
+					entkbn=0 group by infomationid
+			)comm on str.articalid=comm.infomationid 
+			order by str.createtime desc
+	</select>
+	
+	<!-- 根据评论id获取评论关系 -->
+	<select id="findCommentRelation" parameterType="list" resultType="commentRelative">
+		select * from t_commentrelative where parentid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

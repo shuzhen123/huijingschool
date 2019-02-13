@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.saler.SalerCustomerMapper">
+	
+	<!-- 批量拾取 -->
+	<update id="collectCustomer" parameterType="map">
+		update t_customer set dtsmuserid=#{salerid}, updatetime=now() where userid in
+		<foreach item="item" index="index" collection="ids" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<select id="findCustomerUserCount" parameterType="map" resultType="int" >
+		select
+			count(*)
+		from 
+			t_userinfo info, (
+				select 
+					rel.customerid, cla.id levelid
+				from 
+					t_csclassify_customer_related rel left join t_csclassify cla on rel.csclassifyid=cla.id
+				where 
+					<if test="levelid != null">
+						<if test="levelid == ''">
+							(rel.csclassifyid is null or rel.csclassifyid='') and
+						</if>
+						<if test="levelid != ''">
+							rel.csclassifyid = #{levelid} and
+						</if>
+					</if>
+					rel.customerid in(
+						select userid from t_customer where dtsmuserid=#{salerid}
+					)
+			) lev
+		where 
+			info.userid=lev.customerid 
+			<if test="telno != null and telno != '' ">
+				<bind name="telno_" value="telno + '%' "/>
+				and info.telno like #{telno_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and info.realname like #{realname_}
+			</if>
+	</select>
+	<!-- 根据业务员条件获取用户数据 -->
+	<select id="findCustomerUser" parameterType="map" resultType="userInfo">
+		select
+			info.userid, info.telno, info.iconurl, info.nickname, info.realname, info.sex, info.prov,info.restype,
+			info.registertime, info.riskratingfalg, info.entkbn, lev.*
+		from 
+			t_userinfo info, (
+				select 
+					rel.customerid, rel.allcontent remark, cla.id levelid, cla.name levelname
+				from 
+					t_csclassify_customer_related rel left join t_csclassify cla on rel.csclassifyid=cla.id
+				where 
+					<if test="levelid != null">
+						<if test="levelid == ''">
+							(rel.csclassifyid is null or rel.csclassifyid='') and
+						</if>
+						<if test="levelid != ''">
+							rel.csclassifyid = #{levelid} and
+						</if>
+					</if>
+					rel.customerid in(
+						select userid from t_customer where dtsmuserid=#{salerid}
+					)
+			) lev
+		where 
+			info.userid=lev.customerid 
+			<if test="telno != null and telno != '' ">
+				<bind name="telno_" value="telno + '%' "/>
+				and info.telno like #{telno_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and info.realname like #{realname_}
+			</if>
+			order by info.registertime desc 
+			limit #{start}, #{length}
+	</select>
+	
+	<!-- 根据用户id获取用户信息 -->
+	<select id="findUserInfoById" parameterType="string" resultType="userInfo">
+		select
+			info.userid, info.password, info.telno, info.iconurl, info.nickname, info.realname, info.sex, info.prov,info.restype,
+			info.invitecode, info.registertime, info.riskratingfalg, info.entkbn,
+			cla.*
+		from 
+			t_userinfo info, (
+				select 
+					rel.customerid, rel.allcontent remark, cla.id levelid, cla.name levelname
+				from 
+					t_csclassify_customer_related rel left join t_csclassify cla on rel.csclassifyid=cla.id 
+				where 
+					rel.customerid=#{userid}
+			) cla
+		where 
+			info.userid=cla.customerid and info.userid=#{userid}
+	</select>
+	
+	<!-- 更新用户信息 -->
+	<update id="updateUserInfo" parameterType="userInfo">
+		update t_userinfo set password=#{password}, nickname=#{nickname}, realname = #{realname}, sex = #{sex}, prov = #{prov}, restype = #{restype}
+		<if test="iconurl != null">, iconurl=#{iconurl}</if>
+		where userid=#{userid}
+	</update>
+	
+	<!-- 根据id批量丢弃用户 -->
+	<update id="userBatchDel" parameterType="list">
+		update t_customer set dtsmuserid=null, updatetime=null where userid in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+	
+	<!-- 查询用户测评数据 -->
+	<select id="fildUserResultById" parameterType="string" resultType="UserAnswerList"> 
+		select
+			class.id,
+			class.classname classname,
+			question.id questionid,
+			question.questionname questionname,
+			answer.id answerid,
+			answer.answername answername,
+			answer.score score,
+			answer.userid userid,
+			falg.riskratingfalg riskratingfalg
+		from
+			t_evaluate_class class,
+			t_evaluate_question question,
+			t_userinfo falg,
+			(	<!-- 根据用户回答的答案id 查找出答案id对应的答案 并且获取问题的id等信息 -->
+				select 
+					ans.id id ,ans.questionid questionid, ans.answername answername,eva.*
+				from 
+					t_evaluate_answer ans, 
+					(<!-- 根据用户的id，从风险评测用户答案表中，查找出所有用户回答的答案id和分数 -->
+					 select userid, answerid, score  from t_evaluate_user_answer where userid = #{userid} and entkbn = 0) eva 
+				where 
+				ans.id = eva.answerid and
+				ans.entkbn = 0
+			) answer
+		where
+			class.id = question.classid and
+			question.id = answer.questionid and
+			answer.userid = falg.userid
+		order by
+			class.classname,
+			question.questionname,
+			answer.answername
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.LiveCourseMapper">
+	<!-- 根据条件获取直播课程总条数 -->
+	<select id="findLiveCourseCount" parameterType="map" resultType="int">
+		select count(*)
+		from
+			t_course cour, t_viplevel kind, t_userinfo tea
+		where
+			cour.coursetypecode=kind.id and kind.entkbn = 0 and
+			cour.userid=tea.userid and tea.entkbn!=9 and
+			<if test="agentname != null and agentname != ''">
+				<!-- 代理商 -->
+				<bind name="agentname_" value="agentname + '%'"/>
+				cour.userid in(
+					select 
+						teac.teacherid 
+					from 
+						t_agent_teac teac, t_userinfo agent
+					where
+						teac.agentid=agent.userid and agent.realname like #{agentname_} 
+						and agent.role=4 and agent.entkbn!=9
+				) and
+			</if>
+			<if test="teachername != null and teachername != ''">
+				<!-- 讲师 -->
+				<bind name="teachername_" value="teachername + '%'"/>
+				tea.realname like #{teachername_} and
+			</if>
+			<if test="coursename != null and coursename != ''">
+				<!-- 讲师 -->
+				<bind name="coursename_" value="coursename + '%'"/>
+				cour.coursename like #{coursename_} and
+			</if>
+			<choose>
+				<when test="coursekind == 1 or coursekind == 2">
+					<!-- 直播类型 -->
+					cour.coursekind=#{coursekind} and
+				</when>
+				<otherwise>(cour.coursekind=1 or cour.coursekind=2) and</otherwise>
+			</choose>
+			<if test="kind != null and kind != ''">
+				<!-- 课程类型 -->
+				cour.coursetypecode=#{kind} and
+			</if>
+			<if test="flag == 0 or flag == 1">
+				<!-- 课程上下架-->
+				cour.flag=#{flag} and
+			</if>
+			<if test="liveflag == 1 or liveflag == 2 or liveflag == 3">
+				<!-- 直播状态(1正在直播，2往期直播，3预告直播) -->
+				cour.liveflag=#{liveflag} and
+			</if>
+			<if test="auth == 1 or auth == 2 or auth == 3">
+				<!-- 审核状态（1待审核，2审核通过，3审核失败） -->
+				cour.auth=#{auth} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				cour.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			cour.entkbn = 0
+	</select>
+	
+	<!-- 根据条件获取直播课程列表 -->
+	<select id="findLiveCourses" parameterType="map" resultType="liveCourse">
+		select
+			course.*, agent.userid agentid, agent.realname agentname
+		from
+			(
+			select
+				cour.courseid, cour.userid, tea.realname, cour.coursekind, cour.coursename,
+				cour.coursetypecode, kind.levelname coursetypename,
+				cour.coursedes, cour.auth, cour.thumbsupcount, cour.flag, cour.liveflag, cour.createtime, 
+				notice.starttime, notice.endtime
+			from
+				t_course cour, t_viplevel kind, t_userinfo tea, t_course_live_notice notice
+			where
+				cour.coursetypecode=kind.id and kind.entkbn = 0 and
+				cour.userid=tea.userid and tea.entkbn!=9 and
+				cour.courseid=notice.courseid and
+				<if test="agentname != null and agentname != ''">
+					<!-- 代理商 -->
+					<bind name="agentname_" value="agentname + '%'"/>
+					cour.userid in(
+						select 
+							teac.teacherid 
+						from 
+							t_agent_teac teac, t_userinfo agent
+						where
+							teac.agentid=agent.userid and agent.realname like #{agentname_} 
+							and agent.role=4 and agent.entkbn!=9
+					) and
+				</if>
+				<if test="teachername != null and teachername != ''">
+					<!-- 讲师 -->
+					<bind name="teachername_" value="teachername + '%'"/>
+					tea.realname like #{teachername_} and
+				</if>
+				<if test="coursename != null and coursename != ''">
+					<!-- 讲师 -->
+					<bind name="coursename_" value="coursename + '%'"/>
+					cour.coursename like #{coursename_} and
+				</if>
+				<choose>
+					<when test="coursekind == 1 or coursekind == 2">
+						<!-- 直播类型 -->
+						cour.coursekind=#{coursekind} and
+					</when>
+					<otherwise>(cour.coursekind=1 or cour.coursekind=2) and</otherwise>
+				</choose>
+				<if test="kind != null and kind != ''">
+					<!-- 课程类型 -->
+					cour.coursetypecode=#{kind} and
+				</if>
+				<if test="flag == 0 or flag == 1">
+					<!-- 课程上下架-->
+					cour.flag=#{flag} and
+				</if>
+				<if test="liveflag == 1 or liveflag == 2 or liveflag == 3">
+					<!-- 直播状态(1正在直播，2往期直播，3预告直播) -->
+					cour.liveflag=#{liveflag} and
+				</if>
+				<if test="auth == 1 or auth == 2 or auth == 3">
+					<!-- 审核状态（1待审核，2审核通过，3审核失败） -->
+					cour.auth=#{auth} and
+				</if>
+				<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+					<bind name="_starttime" value="starttime + ' 00:00:00'" />
+					<bind name="endtime_" value="endtime + ' 23:59:59'" />
+					cour.createtime between #{_starttime} and #{endtime_} and
+				</if>
+				cour.entkbn = 0
+				<if test="length > 0">
+					limit #{start}, #{length}
+				</if>
+			)course, t_agent_teac teac, t_userinfo agent
+		where
+			course.userid=teac.teacherid and teac.agentid=agent.userid
+			order by course.createtime desc
+	</select>
+	
+	<!-- 获取直播课程详情 -->
+	<select id="getLiveCourseDataById" parameterType="string" resultType="liveCourse">
+		select
+			course.courseid, 
+			course.userid, 
+			user.realname, 
+			course.coursekind, 
+			course.coursetypecode, 
+			course.coursename, 
+			course.coursepic, 
+			course.coursedes, 
+			course.auth, 
+			course.thumbsupcount, 
+			course.flag, 
+			course.liveflag, 
+			course.createtime,
+			notice.starttime, 
+			notice.endtime
+		from 
+			t_course course left join t_userinfo user on course.userid = user.userid
+			left join t_course_live_notice notice on course.courseid = notice.courseid
+		where course.courseid=#{courseid}
+	</select>
+	
+	<!-- 直播课程修改 -->
+	<update id="editLiveCourse" parameterType="liveCourse">
+		update t_course set
+			coursename = #{coursename}, coursetypecode=#{coursetypecode},
+			<if test="auth != null and auth != ''">auth = #{auth},</if>
+			<if test="flag != null and flag != ''">flag = #{flag},</if>
+			<if test="coursepic != null and coursepic != ''">coursepic = #{coursepic},</if>
+			coursedes = #{coursedes}
+		where courseid = #{courseid}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

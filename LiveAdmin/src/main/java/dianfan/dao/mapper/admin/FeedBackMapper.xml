@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.FeedBackMapper">
+	<!-- 根据条件获取用户反馈条数 -->
+	<select id="findFeedBacksCount" parameterType="map" resultType="int">
+		select 
+			count(*)
+		from
+			t_userfeedback
+		where
+			<choose>
+				<when test="type == 'wait'">
+					entkbn = 0
+				</when>
+				<when test="type == 'deal'">
+					entkbn = 1
+				</when>
+				<when test="type == 'success'">
+					entkbn = 2
+				</when>
+				<otherwise>
+					entkbn != 9
+				</otherwise>
+			</choose>
+	</select>
+	<!-- 根据条件获取用户反馈数据 -->
+	<select id="findFeedBacks" parameterType="map" resultType="feedBack">
+		select * from
+			(
+				(select 
+					fb.id, fb.userid, user.realname, fb.content, fb.picurl, fb.teloremail, fb.createtime, fb.entkbn
+				from
+					t_userfeedback fb inner join  t_userinfo user on (fb.userid = user.userid )
+				where
+					 <choose>
+						<when test="type == 'wait'">
+							fb.entkbn = 0
+						</when>
+						<when test="type == 'deal'">
+							fb.entkbn = 1
+						</when>
+						<when test="type == 'success'">
+							fb.entkbn = 2
+						</when>
+						<otherwise>
+							fb.entkbn != 9
+						</otherwise>
+					</choose>
+					 and user.entkbn = 0)
+				UNION
+				(select 
+					id, userid, userid realname, content, picurl, teloremail, createtime, entkbn
+				from
+					t_userfeedback
+				where
+					 <choose>
+						<when test="type == 'wait'">
+							entkbn = 0
+						</when>
+						<when test="type == 'deal'">
+							entkbn = 1
+						</when>
+						<when test="type == 'success'">
+							entkbn = 2
+						</when>
+						<otherwise>
+							entkbn != 9
+						</otherwise>
+					</choose>
+					and userid is null)
+			) tab
+		order by createtime desc
+		<if test="length > 0">
+			limit #{start}, #{length}
+		</if>
+	</select>
+	
+	<!-- 根据id批量删除用户反馈数据 -->
+	<update id="delFeedbackInfoByIds" parameterType="list">
+		update t_userfeedback set entkbn = 9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">#{item}</foreach>
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

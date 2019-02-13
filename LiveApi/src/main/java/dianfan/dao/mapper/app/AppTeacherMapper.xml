@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.app.AppTeacherMapper">
+
+	<!-- 获取名师列表 -->
+	<select id="findRecommendTeacher" resultType="recommendTeacherInfo">
+		select distinct
+			user.userid, user.teacherurl, user.famousteacherord, IFNULL(course.course_count, 0) course_count, IFNULL(video.video_count, 0) video_count
+		from 
+			t_userinfo user left join 
+			(
+				select 
+					userid, count(courseid) course_count 
+				from 
+					t_course 
+				where 
+					entkbn = 0 and flag = 1 group by userid
+			)course on user.userid = course.userid 
+			left join
+			(
+				select userid, count(video_count) video_count from (
+					select 
+					course.userid, count(video.courseid) video_count 
+					from 
+						t_course course left join t_videos video on course.courseid = video.courseid 
+					where  
+						course.entkbn = 0 and course.flag = 1 and course.courseid is NOT NULL and 
+						video.enableflag = 1 and video.entkbn=0 GROUP BY course.courseid
+				)d  GROUP BY userid		
+			) video on user.userid = video.userid 		
+		where 
+			user.role = 5 and user.entkbn = 0 order by user.famousteacherord asc, user.createtime desc
+	</select>
+	
+	<!-- 教师的课程列表 -->
+	<select id="findCourseListByTeacherid" parameterType="map" resultType="appRecommendCourse">
+		select 
+            courseid,  coursename, coursepic, coursemoney, courselimit type, 
+            browsingcount study_count
+        from 
+            t_course
+        where 
+            auth = 2 and flag=1 and entkbn = 0 and userid=#{teacherid} and
+            coursekind = #{type} order by browsingcount desc
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

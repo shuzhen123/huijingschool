@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.admin.SensitiveWordMapper">
+	<!-- 批量删除模块 -->
+	<update id="delCompliance" parameterType="list">
+		update t_handlemethod set entkbn = 9 where id in
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">  
+			#{item}
+		</foreach>
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

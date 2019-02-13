@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.hexun.HexunChatMapper">
+
+	<!-- 根据条件获取通话记录总条数  -->
+	<select id="findSalerPhoneCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_salecustomer_tellog
+		where 
+			<if test="status != null">
+				status = #{status} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				createtime between #{_starttime} and #{endtime_} and
+			</if>
+			entkbn=0
+	</select>
+	
+	<!-- 根据条件获取客户通话记录列表 -->
+	<select id="findSalerPhoneList" parameterType="map" resultType="salerCall">
+		select 
+			tell.id, tell.salerid, tell.customerid, tell.status, tell.calltimes, tell.voicepath, 
+			tell.starttime, tell.endtime, tell.createtime,
+			info.nickname
+		from
+			t_salecustomer_tellog tell left join t_userinfo info on tell.customerid=info.userid
+		where
+			<if test="status != null">
+				tell.status = #{status} and
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				tell.createtime between #{_starttime} and #{endtime_} and
+			</if>
+			tell.entkbn=0 and info.entkbn != 9
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+	
+	<!-- 业务员聊天记录数量 -->
+	<select id="findSalerChatCount" parameterType="map" resultType="int">
+		select count(*) 
+		from 
+			t_words word, t_userinfo saler
+		where 
+			word.saleid = saler.userid 
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				 and saler.realname like #{realname} and saler.role=3
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and word.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and word.entkbn=0
+	</select>
+	
+	<!-- 业务员聊天记录管理列表 -->
+	<select id="findSalerChatList" parameterType="map" resultType="chatWord">
+		select 
+			hist.id, hist.wordid, word.saleid, saler.realname, hist.words, 
+			word.customerid, info.telno, info.nickname, word.createtime
+		from 
+			t_words_history hist, t_userinfo saler, t_userinfo info, t_words word
+		where 
+			not exists
+			(
+				select 1 from t_words_history where entkbn=0 and wordid= hist.id and hist.createtime &lt; createtime
+			) 
+			and word.id=hist.wordid and word.customerid=info.userid and saler.userid=word.saleid
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				 and saler.realname like #{realname} and saler.role=3
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and word.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and word.entkbn=0 and hist.entkbn=0 order by word.createtime desc
+			<if test="length > 0">
+				limit #{start}, #{length}
+			</if>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<settings>
+		<!-- 定义日志接口 -->
+		<setting name="logImpl" value="LOG4J"/>
+	</settings>
+	
+	<!-- 别名定义（此包下的所有实体类都可直接写类名，不需要写类的全路径） -->
+	<typeAliases>
+		<package name="dianfan.entities"/>
+	</typeAliases>
+	
+	<mappers>
+		<!-- 批量mapper扫描 -->
+		<package name="dianfan.dao.mapper.*"/>
+	</mappers>
+</configuration>

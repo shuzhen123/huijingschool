@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentQRMapper">
+	<!-- 更新推广链接 -->
+	<update id="addPopuInfo" parameterType="list">
+		insert into t_popu 
+			(
+				id, userid, invitecode, qrurl, popuurl, type, checkcode, 
+				createtime, createid, updatetime, entkbn
+			)
+		values
+		<foreach item="item" index="index" collection="list" separator=",">
+			(
+				#{item.id}, #{item.userid}, #{item.invitecode}, #{item.qrurl}, #{item.popuurl}, 
+				#{item.type}, #{item.checkcode}, now(), #{item.createid}, #{item.updatetime}, 0
+			)
+		</foreach>
+	</update>
+	
+	<!-- 更新推广链接 -->
+	<update id="updatePopuInfo" parameterType="popu">
+		update t_popu set
+			qrurl = #{qrurl}, 
+			popuurl = #{popuurl}, 
+			checkcode = #{checkcode}, 
+			updatetime = #{updatetime}
+		where userid = #{userid} and type = #{type}
+	</update>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

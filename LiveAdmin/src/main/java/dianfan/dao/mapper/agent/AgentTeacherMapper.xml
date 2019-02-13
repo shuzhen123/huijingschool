@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dianfan.dao.mapper.agent.AgentTeacherMapper">
+
+	<!-- 根据条件获取教师总条数 -->
+	<select id="findTeacherCount" parameterType="map" resultType="int">
+		select count(*)
+		from
+			t_agent_teac tea, t_userinfo info
+		<where>
+			<if test="username != null and username != ''">
+				<bind name="username_" value="username + '%'"/>
+				and info.username like #{username_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and info.realname like #{realname_}
+			</if>
+			<if test="trecflag == 0 or trecflag == 1">
+				and info.trecflag=#{trecflag}
+			</if>
+			<if test="famousteacherflag == 0 or famousteacherflag == 1">
+				and info.famousteacherflag=#{famousteacherflag}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and info.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and tea.teacherid=info.userid and tea.agentid=#{agentid} and info.entkbn != 9
+		</where>
+	</select>
+	
+	<!-- 根据条件获取教师数据 -->
+	<select id="findTeachers" parameterType="map" resultType="userInfo">
+		select
+			info.userid, info.username, info.realname, info.iconurl, info.teacherurl, info.trecflag, 
+			info.famousteacherflag, info.registertime, info.entkbn,
+			IFNULL(course.count,0) count
+		from
+			t_agent_teac teac 
+			join t_userinfo info on teac.teacherid=info.userid
+			left join (
+				select 
+					c.userid, count(c.userid) count 
+				from 
+					t_course c, t_agent_teac atea
+				where 
+					c.userid=atea.teacherid and atea.teacherid in(
+						select 
+							tea.teacherid 
+						from 
+							t_agent_teac tea, t_userinfo info 
+						where 
+							tea.teacherid=info.userid and tea.agentid=#{agentid} and info.entkbn != 9
+					) and c.entkbn=0 group by c.userid
+			) course on teac.teacherid=course.userid
+		<where>
+			<if test="username != null and username != ''">
+				<bind name="username_" value="username + '%'"/>
+				and info.username like #{username_}
+			</if>
+			<if test="realname != null and realname != ''">
+				<bind name="realname_" value="realname + '%'"/>
+				and info.realname like #{realname_}
+			</if>
+			<if test="trecflag == 0 or trecflag == 1">
+				and info.trecflag=#{trecflag}
+			</if>
+			<if test="famousteacherflag == 0 or famousteacherflag == 1">
+				and info.famousteacherflag=#{famousteacherflag}
+			</if>
+			<if test="starttime != null and starttime != '' and endtime != null and endtime != ''">
+				<bind name="_starttime" value="starttime + ' 00:00:00'" />
+				<bind name="endtime_" value="endtime + ' 23:59:59'" />
+				and info.createtime between #{_starttime} and #{endtime_}
+			</if>
+			and teac.agentid=#{agentid} and info.entkbn != 9
+		</where>
+	</select>
+	
+	<!-- 添加教师数据 -->
+	<insert id="addTeacherInfo" parameterType="userInfo">
+		insert into t_userinfo 
+		(
+			 userid, username, introduction, teacherurl, password, realname, telno, cid, iconurl,
+			 registertime, registerstatus, role, trecflag, famousteacherflag, createtime, createid, entkbn
+		)
+		values
+		(
+			 #{userid}, #{username}, #{introduction}, #{teacherurl}, #{password}, #{realname}, #{telno}, #{cid}, #{iconurl}, 
+			 now(), 2, 5, 0, 0, now(), #{createid}, 0
+		)
+	</insert>
+	
+	<!-- 更新讲师数据 -->
+	<update id="editTeacherInfo" parameterType="userInfo">
+		update t_userinfo set
+			<if test="teacherurl != null">teacherurl = #{teacherurl},</if>
+			<if test="iconurl != null">iconurl = #{iconurl},</if>
+			<if test="password != null">password = #{password},</if>
+			cidpassword = #{cidpassword},
+			telno = #{telno},
+			introduction = #{introduction},
+			realname = #{realname}
+		where userid=#{userid}
+	</update>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
